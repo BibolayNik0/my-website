@@ -1,0 +1,32 @@
+[
+  {
+    "id": "durian",
+    "name": "Дуриан",
+    "description": "Экзотический фрукт с сильным запахом.",
+    "image": "assets/ingredients/durian.png"
+  },
+  {
+    "id": "meat",
+    "name": "Мясо",
+    "description": "Свежий кусок мяса, богатый белками.",
+    "image": "assets/ingredients/meat.png"
+  },
+  {
+    "id": "herbs",
+    "name": "Травы",
+    "description": "Сбор различных целебных трав.",
+    "image": "assets/ingredients/herbs.png"
+  },
+  {
+    "id": "potato",
+    "name": "Картофель",
+    "description": "Питательный корнеплод.",
+    "image": "assets/ingredients/potato.png"
+  },
+  {
+    "id": "carrot",
+    "name": "Морковь",
+    "description": "Овощ, богатый витаминами.",
+    "image": "assets/ingredients/carrot.png"
+  }
+]
