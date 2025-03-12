@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Кулинарный менеджер BOTW</title>
+  <!-- Используем шрифт Cinzel для стилизации в духе BOTW -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Cinzel', serif;
+      background: #f2ebe3 url('https://www.transparenttextures.com/patterns/old-mathematics.png');
+      color: #333;
+    }
+    header {
+      background-color: #556b2f;
+      color: #fff;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 2.5em;
+    }
+    main {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 0 20px;
+    }
+    /* Форма добавления рецепта */
+    .recipe-form {
+      background: #fff;
+      padding: 20px;
+      border: 2px solid #ccc;
+      margin-bottom: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .recipe-form h2 {
+      margin-top: 0;
+      color: #556b2f;
+    }
+    .recipe-form label {
+      display: block;
+      margin-top: 10px;
+    }
+    .recipe-form input[type="text"],
+    .recipe-form input[type="number"],
+    .recipe-form textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #aaa;
+      border-radius: 4px;
+      font-size: 1em;
+    }
+    .recipe-form button {
+      margin-top: 15px;
+      background-color: #556b2f;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1em;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .recipe-form button:hover {
+      background-color: #6b8e23;
+    }
+    /* Стили карточек рецептов */
+    .recipe-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+    }
+    .recipe-card {
+      background: #fff;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 350px;
+      padding: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    .recipe-card img {
+      max-width: 100%;
+      border-radius: 4px;
+    }
+    .recipe-card h3 {
+      margin: 10px 0 5px;
+      color: #556b2f;
+    }
+    .recipe-card p {
+      margin: 5px 0;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: #c0392b;
+      border: none;
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8em;
+    }
+    .delete-btn:hover {
+      background-color: #e74c3c;
+    }
+    /* Стили для списка ингредиентов */
+    .ingredient-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    .ingredient-card {
+      background: #fff;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 200px;
+      padding: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .ingredient-card img {
+      max-width: 100%;
+      border-radius: 4px;
+    }
+    .ingredient-card h3 {
+      margin: 10px 0 5px;
+      color: #556b2f;
+    }
+    .ingredient-card p {
+      margin: 5px 0;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Кулинарный менеджер BOTW</h1>
+  </header>
+  <main>
+    <!-- Форма добавления нового рецепта -->
+    <section class="recipe-form">
+      <h2>Добавить новый рецепт</h2>
+      <form id="addRecipeForm">
+        <label for="name">Название блюда:</label>
+        <input type="text" id="name" required>
+        
+        <label for="ingredients">Ингредиенты (через запятую):</label>
+        <textarea id="ingredients" rows="2" required></textarea>
+        
+        <label for="effects">Характеристики/Эффекты:</label>
+        <textarea id="effects" rows="2" required></textarea>
+        
+        <label for="price">Цена (в рублях или условных единицах):</label>
+        <input type="number" id="price" required>
+        
+        <label for="image">URL изображения (необязательно):</label>
+        <input type="text" id="image">
+        
+        <button type="submit">Добавить рецепт</button>
+      </form>
+    </section>
+    
+    <!-- Секция для отображения списка рецептов -->
+    <section>
+      <h2>Список рецептов</h2>
+      <div class="recipe-list" id="recipeList">
+        <!-- Карточки рецептов будут добавляться сюда -->
+      </div>
+    </section>
+    
+    <!-- Секция для отображения списка ингредиентов -->
+    <section>
+      <h2>Список ингредиентов</h2>
+      <div class="ingredient-list" id="ingredientList">
+        <!-- Карточки ингредиентов будут добавляться сюда -->
+      </div>
+    </section>
+  </main>
+  
+  <script>
+    // Работа с рецептами
+    let recipes = JSON.parse(localStorage.getItem('recipes')) || [];
+
+    function saveRecipes() {
+      localStorage.setItem('recipes', JSON.stringify(recipes));
+    }
+
+    function createRecipeCard(recipe, index) {
+      const card = document.createElement('div');
+      card.className = 'recipe-card';
+      
+      if (recipe.image) {
+        const img = document.createElement('img');
+        img.src = recipe.image;
+        img.alt = recipe.name;
+        card.appendChild(img);
+      }
+      
+      const title = document.createElement('h3');
+      title.textContent = recipe.name;
+      card.appendChild(title);
+      
+      const ingredients = document.createElement('p');
+      ingredients.innerHTML = '<strong>Ингредиенты:</strong> ' + recipe.ingredients;
+      card.appendChild(ingredients);
+      
+      const effects = document.createElement('p');
+      effects.innerHTML = '<strong>Эффекты:</strong> ' + recipe.effects;
+      card.appendChild(effects);
+      
+      const price = document.createElement('p');
+      price.innerHTML = '<strong>Цена:</strong> ' + recipe.price;
+      card.appendChild(price);
+      
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.textContent = 'Удалить';
+      deleteBtn.onclick = () => {
+        recipes.splice(index, 1);
+        saveRecipes();
+        renderRecipes();
+      };
+      card.appendChild(deleteBtn);
+      
+      return card;
+    }
+
+    function renderRecipes() {
+      const recipeList = document.getElementById('recipeList');
+      recipeList.innerHTML = '';
+      recipes.forEach((recipe, index) => {
+        const card = createRecipeCard(recipe, index);
+        recipeList.appendChild(card);
+      });
+    }
+
+    document.getElementById('addRecipeForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const name = document.getElementById('name').value;
+      const ingredients = document.getElementById('ingredients').value;
+      const effects = document.getElementById('effects').value;
+      const price = document.getElementById('price').value;
+      const image = document.getElementById('image').value;
+      
+      const newRecipe = { name, ingredients, effects, price, image };
+      recipes.push(newRecipe);
+      saveRecipes();
+      renderRecipes();
+      e.target.reset();
+    });
+
+    if (recipes.length === 0) {
+      recipes.push({
+        name: "Сытное рагу из Дуриана",
+        ingredients: "Дуриан, мясо, травы",
+        effects: "Восстанавливает жизни и добавляет временные сердца",
+        price: 50,
+        image: "https://source.unsplash.com/featured/?fruit"
+      });
+      saveRecipes();
+    }
+    
+    renderRecipes();
+
+    // Работа со списком ингредиентов
+    function renderIngredients() {
+      fetch('data/ingredients.json')
+        .then(response => response.json())
+        .then(data => {
+          const ingredientList = document.getElementById('ingredientList');
+          ingredientList.innerHTML = '';
+          data.forEach(ingredient => {
+            const card = document.createElement('div');
+            card.className = 'ingredient-card';
+            
+            const img = document.createElement('img');
+            img.src = ingredient.image;
+            img.alt = ingredient.name;
+            card.appendChild(img);
+            
+            const name = document.createElement('h3');
+            name.textContent = ingredient.name;
+            card.appendChild(name);
+            
+            const description = document.createElement('p');
+            description.textContent = ingredient.description;
+            card.appendChild(description);
+            
+            ingredientList.appendChild(card);
+          });
+        })
+        .catch(err => {
+          console.error('Ошибка загрузки ингредиентов', err);
+        });
+    }
+    
+    renderIngredients();
+  </script>
+</body>
+</html>
