@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e0e12">
+  <title>Волна — музыка и друзья</title>
+  <meta name="description" content="Музыкальная соцсеть: слушайте треки, подписывайтесь на друзей и смотрите, что им нравится.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='1' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23ff7a18'/%3E%3Cstop offset='.5' stop-color='%23ff2e88'/%3E%3Cstop offset='1' stop-color='%238b5cf6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Cpath d='M6 18c3 0 3-6 6-6s3 9 6 9 3-12 6-12 2 6 2 6' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <a class="logo" href="#/">Волна</a>
+      <nav class="nav">
+        <a href="#/" data-nav="feed"><svg viewBox="0 0 24 24" class="i-line"><path d="M3.5 10.5 12 3.5l8.5 7V20a.5.5 0 0 1-.5.5h-5v-6h-6v6H4a.5.5 0 0 1-.5-.5z"/></svg><span>Лента</span></a>
+        <a href="#/explore" data-nav="explore"><svg viewBox="0 0 24 24" class="i-line"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><span>Обзор</span></a>
+        <a href="#/upload" data-nav="upload"><svg viewBox="0 0 24 24" class="i-line"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="M12 8v8M8 12h8"/></svg><span>Создать</span></a>
+        <a href="#/" data-nav="me"><span class="nav-avatar"></span><span>Профиль</span></a>
+      </nav>
+    </aside>
+
+    <main id="view"></main>
+
+    <nav class="bottom-nav">
+      <a href="#/" data-nav="feed" aria-label="Лента"><svg viewBox="0 0 24 24" class="i-line"><path d="M3.5 10.5 12 3.5l8.5 7V20a.5.5 0 0 1-.5.5h-5v-6h-6v6H4a.5.5 0 0 1-.5-.5z"/></svg></a>
+      <a href="#/explore" data-nav="explore" aria-label="Обзор"><svg viewBox="0 0 24 24" class="i-line"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></a>
+      <a href="#/upload" data-nav="upload" aria-label="Создать"><svg viewBox="0 0 24 24" class="i-line"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="M12 8v8M8 12h8"/></svg></a>
+      <a href="#/" data-nav="me" aria-label="Профиль"><span class="nav-avatar"></span></a>
+    </nav>
+
+    <footer id="player" class="empty">
+      <div id="pl-progress" class="pl-progress"><div class="pl-progress-fill"></div></div>
+      <div class="pl-track">
+        <img id="pl-cover" class="cover" alt="">
+        <div class="pl-meta">
+          <a id="pl-title" href="#/"></a>
+          <a id="pl-artist" href="#/"></a>
+        </div>
+        <button id="pl-like" class="like-btn" data-action="like" title="Нравится"><svg viewBox="0 0 24 24" class="i-heart"><path d="M12 20.5s-7.5-4.6-9.3-9.4C1.4 7.6 3.6 4 7.2 4c2 0 3.6 1.1 4.8 2.8C13.2 5.1 14.8 4 16.8 4c3.6 0 5.8 3.6 4.5 7.1-1.8 4.8-9.3 9.4-9.3 9.4z"/></svg></button>
+      </div>
+      <div class="pl-controls">
+        <button class="icon-btn" data-action="pl-prev" aria-label="Назад"><svg viewBox="0 0 24 24"><path d="M19 6.2v11.6a1 1 0 0 1-1.55.83L9 13v4.5a1 1 0 0 1-2 0v-11a1 1 0 0 1 2 0V11l8.45-5.63A1 1 0 0 1 19 6.2z"/></svg></button>
+        <button id="pl-toggle" class="play-btn" data-action="pl-toggle" aria-label="Пауза/воспроизведение"><span class="ic-play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg></span><span class="ic-pause"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg></span></button>
+        <button class="icon-btn" data-action="pl-next" aria-label="Дальше"><svg viewBox="0 0 24 24"><path d="M5 6.2v11.6a1 1 0 0 0 1.55.83L15 13v4.5a1 1 0 0 0 2 0v-11a1 1 0 0 0-2 0V11L6.55 5.37A1 1 0 0 0 5 6.2z"/></svg></button>
+      </div>
+      <div class="pl-right">
+        <span id="pl-time" class="muted tiny">0:00</span><span class="muted tiny">/</span><span id="pl-dur" class="muted tiny">0:00</span>
+        <svg viewBox="0 0 24 24" class="i-line vol-ic"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+        <input id="pl-volume" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Громкость">
+      </div>
+    </footer>
+  </div>
+  <div id="toast" role="status"></div>
+
+  <script src="js/synth.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
