@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>100 игр для Яндекс Игр</title>
+<style>
+  :root { --bg: #0f1734; --card: rgba(255,255,255,.08); --line: rgba(255,255,255,.15); --txt: #fff; --muted: rgba(255,255,255,.6); --acc: #ffb300; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--txt); font-family: system-ui, sans-serif; }
+  header { padding: 24px 16px 8px; max-width: 1200px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; } p { color: var(--muted); margin: 0 0 12px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; }
+  .filters button { padding: 7px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--card); color: inherit; cursor: pointer; font: inherit; }
+  .filters button.on { background: var(--acc); color: #111; border-color: var(--acc); }
+  main { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; padding: 16px; max-width: 1200px; margin: 0 auto; }
+  a.g { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 16px; text-decoration: none; color: inherit; border: 1px solid var(--line); transition: transform .1s; }
+  a.g:hover { transform: translateY(-3px); }
+  .e { font-size: 44px; } .n { font-weight: 700; } .t { font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>100 игр для Яндекс Игр</h1>
+  <p>Общий движок монетизации: магазин, VIP, боевой пропуск, коллекции, сундуки, ежедневные награды и награды за рекламу. Выберите игру для предпросмотра.</p>
+  <div class="filters" id="f"></div>
+</header>
+<main id="list"></main>
+<script src="catalog/sets.js"></script>
+<script src="catalog/games.js"></script>
+<script>
+  const names = { all: 'Все', clicker: 'Кликеры', merge: 'Мерж', match3: '3 в ряд', runner: 'Раннеры', stack: 'Башни', snake: 'Змейки', g2048: '2048', sort: 'Сортировки', flappy: 'Флаппи', breakout: 'Арканоиды', defense: 'Оборона', memory: 'Мемори' };
+  const f = document.getElementById('f'), list = document.getElementById('list');
+  let cur = 'all';
+  const draw = () => {
+    f.innerHTML = Object.entries(names).map(([k, v]) => `<button class="${k === cur ? 'on' : ''}" data-k="${k}">${v} ${k === 'all' ? YG_GAMES.length : YG_GAMES.filter((g) => g.genre === k).length}</button>`).join('');
+    list.innerHTML = YG_GAMES.filter((g) => cur === 'all' || g.genre === cur).map((g) => `
+      <a class="g" href="play.html?g=${g.slug}" style="background:linear-gradient(160deg,${g.pal[0]},${g.pal[1]})">
+        <span class="e">${g.sp.hero}</span><span class="n">${g.id}. ${g.title.ru}</span><span class="t">${names[g.genre]} · ${g.desc.ru}</span></a>`).join('');
+  };
+  f.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { cur = b.dataset.k; draw(); } });
+  draw();
+</script>
+</body>
+</html>

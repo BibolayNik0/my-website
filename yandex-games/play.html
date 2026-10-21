@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Игра</title>
+<link rel="stylesheet" href="engine/ui.css">
+</head>
+<body>
+<div id="loader">⏳</div>
+<div id="app"></div>
+<!-- Локальный предпросмотр: SDK Яндекса не подключён, работает заглушка (покупки/реклама через confirm). -->
+<script src="catalog/sets.js"></script>
+<script src="catalog/games.js"></script>
+<script src="engine/sdk.js"></script>
+<script src="engine/core.js"></script>
+<script src="engine/input.js"></script>
+<script src="engine/genres/clicker.js"></script>
+<script src="engine/genres/merge.js"></script>
+<script src="engine/genres/match3.js"></script>
+<script src="engine/genres/runner.js"></script>
+<script src="engine/genres/stack.js"></script>
+<script src="engine/genres/snake.js"></script>
+<script src="engine/genres/g2048.js"></script>
+<script src="engine/genres/sort.js"></script>
+<script src="engine/genres/flappy.js"></script>
+<script src="engine/genres/breakout.js"></script>
+<script src="engine/genres/defense.js"></script>
+<script src="engine/genres/memory.js"></script>
+<script>
+  const slug = new URLSearchParams(location.search).get('g') || YG_GAMES[0].slug;
+  const game = YG_GAMES.find((g) => g.slug === slug) || YG_GAMES[0];
+  YG.boot(game);
+</script>
+</body>
+</html>

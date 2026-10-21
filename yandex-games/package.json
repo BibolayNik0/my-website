@@ -1,0 +1,11 @@
+{
+  "name": "yandex-games-100",
+  "private": true,
+  "version": "1.0.0",
+  "description": "100 HTML5-игр для Яндекс Игр на общем движке монетизации",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "serve": "python3 -m http.server 8080",
+    "check": "node tools/check.mjs"
+  }
+}
