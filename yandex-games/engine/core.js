@@ -839,6 +839,7 @@
     return c;
   }
   function drawSprite(ctx, ch, x, y, size, rot) {
+    if (!(size >= 2)) return; // анимации масштаба могут проходить через ноль
     const s = sprite(ch, size);
     if (rot) {
       ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.drawImage(s, -s.width / 2, -s.height / 2); ctx.restore();
