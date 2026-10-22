@@ -122,6 +122,8 @@ async function shots(browser, g, dir, landscape) {
   }
   const settle = { defense: 8000, runner: 1800, snake: 1200, breakout: 1200 }[g.genre];
   if (settle) await page.waitForTimeout(settle);
+  // если игрок успел проиграть — прячем окно «Продолжить?», поле под ним остаётся на кадре
+  await page.evaluate(() => document.querySelector('.modal-wrap').classList.remove('show'));
   await shot(1);
   // 2 — коллекция
   await page.evaluate(() => { document.body.classList.remove('in-game'); });
@@ -174,10 +176,14 @@ for (const g of targets) {
     `Архив: ${id}-${g.slug}.zip\nКатегория: ${CATEGORY[g.genre]}\nВозраст: 0+\n\n` +
     `=== RU ===\nНазвание: ${l.ru.title}\nКраткое описание: ${l.ru.short}\nПолное описание:\n${l.ru.full}\nКак играть: ${l.ru.how}\n\n` +
     `=== EN ===\nTitle: ${l.en.title}\nShort description: ${l.en.short}\nFull description:\n${l.en.full}\nHow to play: ${l.en.how}\n`);
-  csv.push([g.id, g.slug, `${id}-${g.slug}.zip`, GENRE[g.genre][0], CATEGORY[g.genre], l.ru.title, l.ru.full, l.ru.how, l.en.title, l.en.full, l.en.how]);
   console.log(`✓ ${id} ${g.slug}`);
 }
 await browser.close();
+// Таблица всегда по всем играм, даже если картинки перегенерировались только для части.
+for (const g of GAMES) {
+  const l = listing(g), id = String(g.id).padStart(3, '0');
+  csv.push([g.id, g.slug, `${id}-${g.slug}.zip`, GENRE[g.genre][0], CATEGORY[g.genre], l.ru.title, l.ru.full, l.ru.how, l.en.title, l.en.full, l.en.how]);
+}
 const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
 fs.writeFileSync(path.join(OUT, 'listings.csv'), '﻿' + csv.map((r) => r.map(q).join(';')).join('\r\n'));
 console.log(`Готово: ${targets.length} игр → ${path.relative(ROOT, OUT)}`);
