@@ -116,7 +116,15 @@ async function shots(browser, g, dir, landscape) {
   const box = await page.locator('canvas').first().boundingBox();
   const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
   const taps = { flappy: 3, clicker: 8, stack: 4, defense: 0, runner: 2 }[g.genre] ?? 3;
-  for (let i = 0; i < taps; i++) {
+  if (g.genre === 'stack') {
+    // блок проезжает ~0.8 ширины поля до идеальной позиции; тапаем в такт, чтобы на кадре была настоящая башня
+    const travel = Math.min(220, vp.width * 0.6) + (vp.width - Math.min(220, vp.width * 0.6)) / 2;
+    for (let i = 0; i < 9; i++) {
+      await page.waitForTimeout(travel / ((g.p.speed || 180) + i * 4) * 1000);
+      await page.mouse.click(cx, cy);
+    }
+  }
+  for (let i = 0; i < (g.genre === 'stack' ? 0 : taps); i++) {
     await page.mouse.click(cx + (i % 2 ? 40 : -40), cy + (g.genre === 'defense' ? -box.height * 0.25 : 0));
     await page.waitForTimeout(g.genre === 'flappy' ? 260 : 180);
   }
