@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#1b2a4a">
-<title>Монстро GO</title>
+<title>Покемон GO</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root {
@@ -52,10 +52,16 @@
   .dpad .r { grid-column: 3; grid-row: 2; } .dpad .d { grid-column: 2; grid-row: 3; }
 
   /* Markers */
-  .mon { font-size: 34px; line-height: 1; text-align: center; filter: drop-shadow(0 3px 2px rgba(0,0,0,.45));
+  .mon { position: relative; line-height: 1; filter: drop-shadow(0 3px 2px rgba(0,0,0,.45));
     animation: bob 1.6s ease-in-out infinite; transition: opacity .3s; }
   .mon.far { opacity: .55; }
-  .mon.rare::after { content: ""; position: absolute; inset: -6px; border-radius: 50%;
+  .pk { display: block; width: 56px; height: 56px; image-rendering: pixelated; pointer-events: none; }
+  .pk.sm { width: 64px; height: 64px; margin: 0 auto; }
+  .pk.lg { width: 140px; height: 140px; margin: 0 auto; }
+  .card .pk { width: 72px; height: 72px; margin: 0 auto; }
+  .row .pk { width: 48px; height: 48px; }
+  .target .body img { width: 150px; height: 150px; object-fit: contain; margin-top: -5px; pointer-events: none; }
+  .mon.rare::after { content: ""; position: absolute; inset: 8px; border-radius: 50%;
     box-shadow: 0 0 18px 6px rgba(255, 203, 5, .7); z-index: -1; }
   @keyframes bob { 50% { transform: translateY(-6px); } }
   .stop { width: 30px; height: 30px; border-radius: 50%; border: 3px solid #fff; background: #3d7dca;
@@ -75,7 +81,7 @@
   .card .e { font-size: 40px; }
   .card .n { font-size: 13px; font-weight: 600; margin-top: 4px; }
   .card .s { font-size: 11px; color: var(--muted); }
-  .card.unknown .e { filter: brightness(0) opacity(.35); }
+  .card.unknown .e { filter: brightness(0) invert(1) opacity(.22); }
   .card .num { position: absolute; top: 6px; left: 8px; font-size: 10px; color: var(--muted); }
   .badge { position: absolute; top: 6px; right: 8px; font-size: 11px; background: var(--accent); color: #222; border-radius: 999px; padding: 0 6px; font-weight: 700; }
   .stats { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
@@ -149,17 +155,17 @@
 
 <div class="hud bottom">
   <button class="round" id="btnCenter" title="Центрировать">🎯</button>
-  <button class="round mainbtn" id="btnDex" title="Монстродекс"></button>
+  <button class="round mainbtn" id="btnDex" title="Покедекс"></button>
   <button class="round" id="btnMenu" title="Меню">☰</button>
 </div>
 
 <!-- Dex screen -->
 <div class="screen sheet" id="dex">
-  <h2>Монстродекс <button class="close" data-close="dex">✕</button></h2>
+  <h2>Покедекс <button class="close" data-close="dex">✕</button></h2>
   <div class="stats" id="dexStats"></div>
   <div class="tabs">
     <button class="on" data-tab="species">Виды</button>
-    <button data-tab="mine">Мои монстры</button>
+    <button data-tab="mine">Мои покемоны</button>
   </div>
   <div id="dexBody"></div>
 </div>
@@ -177,7 +183,7 @@
       <div class="ring" id="ring"></div>
       <div class="body" id="encBody"></div>
     </div>
-    <div class="hint" id="encHint">Смахни мяч вверх, чтобы бросить</div>
+    <div class="hint" id="encHint">Смахни покебол вверх, чтобы бросить</div>
     <div class="ball" id="ball"></div>
   </div>
   <div class="enc-bottom" id="ballPicker"></div>
@@ -192,27 +198,162 @@
 (() => {
   // ---------- Data ----------
   const SPECIES = [
-    { id: 1,  name: 'Листочек',   e: '🌱', type: 'Трава',     rarity: 1 },
-    { id: 2,  name: 'Огнехвост',  e: '🦊', type: 'Огонь',     rarity: 2 },
-    { id: 3,  name: 'Капелька',   e: '💧', type: 'Вода',      rarity: 1 },
-    { id: 4,  name: 'Искрыш',     e: '⚡', type: 'Электро',   rarity: 2 },
-    { id: 5,  name: 'Жужик',      e: '🐝', type: 'Жук',       rarity: 1 },
-    { id: 6,  name: 'Лягуш',      e: '🐸', type: 'Вода',      rarity: 1 },
-    { id: 7,  name: 'Грибочек',   e: '🍄', type: 'Трава',     rarity: 1 },
-    { id: 8,  name: 'Бабочник',   e: '🦋', type: 'Жук',       rarity: 2 },
-    { id: 9,  name: 'Камнеед',    e: '🪨', type: 'Камень',    rarity: 2 },
-    { id: 10, name: 'Черепах',    e: '🐢', type: 'Вода',      rarity: 2 },
-    { id: 11, name: 'Совун',      e: '🦉', type: 'Летающий',  rarity: 2, night: true },
-    { id: 12, name: 'Мышонок',    e: '🐭', type: 'Обычный',   rarity: 1 },
-    { id: 13, name: 'Пушистик',   e: '🐰', type: 'Обычный',   rarity: 1 },
-    { id: 14, name: 'Ледыш',      e: '❄️', type: 'Лёд',       rarity: 3 },
-    { id: 15, name: 'Призрачок',  e: '👻', type: 'Призрак',   rarity: 3, night: true },
-    { id: 16, name: 'Осьминожик', e: '🐙', type: 'Вода',      rarity: 3 },
-    { id: 17, name: 'Медвежик',   e: '🐻', type: 'Обычный',   rarity: 3 },
-    { id: 18, name: 'Звездун',    e: '⭐', type: 'Волшебный', rarity: 4 },
-    { id: 19, name: 'Единорожка', e: '🦄', type: 'Волшебный', rarity: 4 },
-    { id: 20, name: 'Дракоша',    e: '🐉', type: 'Дракон',    rarity: 5 },
+    { id: 1, name: 'Бульбазавр', type: 'Трава', rarity: 2 },
+    { id: 2, name: 'Ивизавр', type: 'Трава', rarity: 3 },
+    { id: 3, name: 'Венузавр', type: 'Трава', rarity: 4 },
+    { id: 4, name: 'Чармандер', type: 'Огонь', rarity: 2 },
+    { id: 5, name: 'Чармелеон', type: 'Огонь', rarity: 3 },
+    { id: 6, name: 'Чаризард', type: 'Огонь', rarity: 4 },
+    { id: 7, name: 'Сквиртл', type: 'Вода', rarity: 2 },
+    { id: 8, name: 'Вартортл', type: 'Вода', rarity: 3 },
+    { id: 9, name: 'Бластойз', type: 'Вода', rarity: 4 },
+    { id: 10, name: 'Катерпи', type: 'Жук', rarity: 1 },
+    { id: 11, name: 'Метапод', type: 'Жук', rarity: 2 },
+    { id: 12, name: 'Баттерфри', type: 'Жук', rarity: 3 },
+    { id: 13, name: 'Видл', type: 'Жук', rarity: 1 },
+    { id: 14, name: 'Какуна', type: 'Жук', rarity: 2 },
+    { id: 15, name: 'Бидрилл', type: 'Жук', rarity: 3 },
+    { id: 16, name: 'Пиджи', type: 'Летающий', rarity: 1 },
+    { id: 17, name: 'Пиджеотто', type: 'Летающий', rarity: 2 },
+    { id: 18, name: 'Пиджеот', type: 'Летающий', rarity: 3 },
+    { id: 19, name: 'Раттата', type: 'Обычный', rarity: 1 },
+    { id: 20, name: 'Рэтикейт', type: 'Обычный', rarity: 2 },
+    { id: 21, name: 'Спироу', type: 'Летающий', rarity: 1 },
+    { id: 22, name: 'Фироу', type: 'Летающий', rarity: 2 },
+    { id: 23, name: 'Эканс', type: 'Яд', rarity: 1 },
+    { id: 24, name: 'Эрбок', type: 'Яд', rarity: 2 },
+    { id: 25, name: 'Пикачу', type: 'Электро', rarity: 2 },
+    { id: 26, name: 'Райчу', type: 'Электро', rarity: 3 },
+    { id: 27, name: 'Сэндшру', type: 'Земля', rarity: 1 },
+    { id: 28, name: 'Сэндслэш', type: 'Земля', rarity: 2 },
+    { id: 29, name: 'Нидоран♀', type: 'Яд', rarity: 1 },
+    { id: 30, name: 'Нидорина', type: 'Яд', rarity: 2 },
+    { id: 31, name: 'Нидоквин', type: 'Яд', rarity: 3 },
+    { id: 32, name: 'Нидоран♂', type: 'Яд', rarity: 1 },
+    { id: 33, name: 'Нидорино', type: 'Яд', rarity: 2 },
+    { id: 34, name: 'Нидокинг', type: 'Яд', rarity: 3 },
+    { id: 35, name: 'Клефэйри', type: 'Фея', rarity: 2 },
+    { id: 36, name: 'Клефэйбл', type: 'Фея', rarity: 3 },
+    { id: 37, name: 'Вульпикс', type: 'Огонь', rarity: 2 },
+    { id: 38, name: 'Найнтейлз', type: 'Огонь', rarity: 3 },
+    { id: 39, name: 'Джигглипафф', type: 'Фея', rarity: 2 },
+    { id: 40, name: 'Вигглитафф', type: 'Фея', rarity: 3 },
+    { id: 41, name: 'Зубат', type: 'Яд', rarity: 1, night: true },
+    { id: 42, name: 'Голбат', type: 'Яд', rarity: 2, night: true },
+    { id: 43, name: 'Оддиш', type: 'Трава', rarity: 1 },
+    { id: 44, name: 'Глум', type: 'Трава', rarity: 2 },
+    { id: 45, name: 'Вайлплум', type: 'Трава', rarity: 3 },
+    { id: 46, name: 'Парас', type: 'Жук', rarity: 1 },
+    { id: 47, name: 'Парасект', type: 'Жук', rarity: 2 },
+    { id: 48, name: 'Венонат', type: 'Жук', rarity: 1 },
+    { id: 49, name: 'Веномот', type: 'Жук', rarity: 2 },
+    { id: 50, name: 'Диглетт', type: 'Земля', rarity: 1 },
+    { id: 51, name: 'Дагтрио', type: 'Земля', rarity: 2 },
+    { id: 52, name: 'Мяут', type: 'Обычный', rarity: 1 },
+    { id: 53, name: 'Персиан', type: 'Обычный', rarity: 2 },
+    { id: 54, name: 'Псайдак', type: 'Вода', rarity: 1 },
+    { id: 55, name: 'Голдак', type: 'Вода', rarity: 2 },
+    { id: 56, name: 'Манки', type: 'Боевой', rarity: 1 },
+    { id: 57, name: 'Праймейп', type: 'Боевой', rarity: 2 },
+    { id: 58, name: 'Гроулит', type: 'Огонь', rarity: 2 },
+    { id: 59, name: 'Арканайн', type: 'Огонь', rarity: 4 },
+    { id: 60, name: 'Поливаг', type: 'Вода', rarity: 1 },
+    { id: 61, name: 'Поливирл', type: 'Вода', rarity: 2 },
+    { id: 62, name: 'Поливрат', type: 'Вода', rarity: 3 },
+    { id: 63, name: 'Абра', type: 'Психический', rarity: 2 },
+    { id: 64, name: 'Кадабра', type: 'Психический', rarity: 3 },
+    { id: 65, name: 'Алаказам', type: 'Психический', rarity: 4 },
+    { id: 66, name: 'Мачоп', type: 'Боевой', rarity: 1 },
+    { id: 67, name: 'Мачок', type: 'Боевой', rarity: 2 },
+    { id: 68, name: 'Мачамп', type: 'Боевой', rarity: 3 },
+    { id: 69, name: 'Беллспраут', type: 'Трава', rarity: 1 },
+    { id: 70, name: 'Випинбелл', type: 'Трава', rarity: 2 },
+    { id: 71, name: 'Виктрибел', type: 'Трава', rarity: 3 },
+    { id: 72, name: 'Тентакул', type: 'Вода', rarity: 1 },
+    { id: 73, name: 'Тентакруэль', type: 'Вода', rarity: 2 },
+    { id: 74, name: 'Джеодуд', type: 'Камень', rarity: 1 },
+    { id: 75, name: 'Гравелер', type: 'Камень', rarity: 2 },
+    { id: 76, name: 'Голем', type: 'Камень', rarity: 3 },
+    { id: 77, name: 'Понита', type: 'Огонь', rarity: 2 },
+    { id: 78, name: 'Рапидэш', type: 'Огонь', rarity: 3 },
+    { id: 79, name: 'Слоупок', type: 'Вода', rarity: 1 },
+    { id: 80, name: 'Слоубро', type: 'Вода', rarity: 2 },
+    { id: 81, name: 'Магнемайт', type: 'Электро', rarity: 1 },
+    { id: 82, name: 'Магнетон', type: 'Электро', rarity: 2 },
+    { id: 83, name: 'Фарфетчд', type: 'Летающий', rarity: 2 },
+    { id: 84, name: 'Додуо', type: 'Летающий', rarity: 1 },
+    { id: 85, name: 'Додрио', type: 'Летающий', rarity: 2 },
+    { id: 86, name: 'Сил', type: 'Вода', rarity: 1 },
+    { id: 87, name: 'Дьюгонг', type: 'Лёд', rarity: 2 },
+    { id: 88, name: 'Граймер', type: 'Яд', rarity: 1 },
+    { id: 89, name: 'Мак', type: 'Яд', rarity: 2 },
+    { id: 90, name: 'Шеллдер', type: 'Вода', rarity: 1 },
+    { id: 91, name: 'Клойстер', type: 'Лёд', rarity: 2 },
+    { id: 92, name: 'Гастли', type: 'Призрак', rarity: 1, night: true },
+    { id: 93, name: 'Хонтер', type: 'Призрак', rarity: 2, night: true },
+    { id: 94, name: 'Генгар', type: 'Призрак', rarity: 3, night: true },
+    { id: 95, name: 'Оникс', type: 'Камень', rarity: 2 },
+    { id: 96, name: 'Дроузи', type: 'Психический', rarity: 1 },
+    { id: 97, name: 'Гипно', type: 'Психический', rarity: 2 },
+    { id: 98, name: 'Крабби', type: 'Вода', rarity: 1 },
+    { id: 99, name: 'Кинглер', type: 'Вода', rarity: 2 },
+    { id: 100, name: 'Волторб', type: 'Электро', rarity: 1 },
+    { id: 101, name: 'Электрод', type: 'Электро', rarity: 2 },
+    { id: 102, name: 'Экзеггут', type: 'Трава', rarity: 2 },
+    { id: 103, name: 'Экзеггутор', type: 'Трава', rarity: 3 },
+    { id: 104, name: 'Кьюбон', type: 'Земля', rarity: 2 },
+    { id: 105, name: 'Маровак', type: 'Земля', rarity: 2 },
+    { id: 106, name: 'Хитмонли', type: 'Боевой', rarity: 2 },
+    { id: 107, name: 'Хитмончан', type: 'Боевой', rarity: 2 },
+    { id: 108, name: 'Ликитунг', type: 'Обычный', rarity: 2 },
+    { id: 109, name: 'Коффинг', type: 'Яд', rarity: 1 },
+    { id: 110, name: 'Визинг', type: 'Яд', rarity: 2 },
+    { id: 111, name: 'Райхорн', type: 'Земля', rarity: 2 },
+    { id: 112, name: 'Райдон', type: 'Земля', rarity: 3 },
+    { id: 113, name: 'Ченси', type: 'Обычный', rarity: 2 },
+    { id: 114, name: 'Танджела', type: 'Трава', rarity: 2 },
+    { id: 115, name: 'Кангасхан', type: 'Обычный', rarity: 2 },
+    { id: 116, name: 'Хорси', type: 'Вода', rarity: 1 },
+    { id: 117, name: 'Сидра', type: 'Вода', rarity: 2 },
+    { id: 118, name: 'Голдин', type: 'Вода', rarity: 1 },
+    { id: 119, name: 'Сикинг', type: 'Вода', rarity: 2 },
+    { id: 120, name: 'Старью', type: 'Вода', rarity: 1 },
+    { id: 121, name: 'Старми', type: 'Вода', rarity: 2 },
+    { id: 122, name: 'Мистер Майм', type: 'Психический', rarity: 2 },
+    { id: 123, name: 'Сайтер', type: 'Жук', rarity: 2 },
+    { id: 124, name: 'Джинкс', type: 'Лёд', rarity: 2 },
+    { id: 125, name: 'Электабазз', type: 'Электро', rarity: 2 },
+    { id: 126, name: 'Магмар', type: 'Огонь', rarity: 2 },
+    { id: 127, name: 'Пинсир', type: 'Жук', rarity: 2 },
+    { id: 128, name: 'Таурос', type: 'Обычный', rarity: 2 },
+    { id: 129, name: 'Мэджикарп', type: 'Вода', rarity: 1 },
+    { id: 130, name: 'Гаярдос', type: 'Вода', rarity: 3 },
+    { id: 131, name: 'Лапрас', type: 'Лёд', rarity: 3 },
+    { id: 132, name: 'Дитто', type: 'Обычный', rarity: 2 },
+    { id: 133, name: 'Иви', type: 'Обычный', rarity: 2 },
+    { id: 134, name: 'Вапореон', type: 'Вода', rarity: 3 },
+    { id: 135, name: 'Джолтеон', type: 'Электро', rarity: 3 },
+    { id: 136, name: 'Флареон', type: 'Огонь', rarity: 3 },
+    { id: 137, name: 'Поригон', type: 'Обычный', rarity: 2 },
+    { id: 138, name: 'Оманайт', type: 'Камень', rarity: 2 },
+    { id: 139, name: 'Омастар', type: 'Камень', rarity: 3 },
+    { id: 140, name: 'Кабуто', type: 'Камень', rarity: 2 },
+    { id: 141, name: 'Кабутопс', type: 'Камень', rarity: 3 },
+    { id: 142, name: 'Аэродактиль', type: 'Камень', rarity: 3 },
+    { id: 143, name: 'Снорлакс', type: 'Обычный', rarity: 3 },
+    { id: 144, name: 'Артикуно', type: 'Лёд', rarity: 5 },
+    { id: 145, name: 'Запдос', type: 'Электро', rarity: 5 },
+    { id: 146, name: 'Молтрес', type: 'Огонь', rarity: 5 },
+    { id: 147, name: 'Дратини', type: 'Дракон', rarity: 2 },
+    { id: 148, name: 'Драгонэйр', type: 'Дракон', rarity: 3 },
+    { id: 149, name: 'Драгонайт', type: 'Дракон', rarity: 4 },
+    { id: 150, name: 'Мьюту', type: 'Психический', rarity: 5 },
+    { id: 151, name: 'Мью', type: 'Психический', rarity: 5 },
   ];
+  const SPRITE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
+  const sprite = (sp, cls = '') => `<img class="pk ${cls}" src="${SPRITE}${sp.id}.png" alt="${sp.name}" draggable="false">`;
+  const artwork = (sp) => `${SPRITE}other/official-artwork/${sp.id}.png`;
+
   const RARITY = {
     1: { label: 'Обычный',     weight: 50, catchRate: 0.55, flee: 0.08, xp: 100 },
     2: { label: 'Необычный',   weight: 25, catchRate: 0.40, flee: 0.12, xp: 150 },
@@ -221,9 +362,9 @@
     5: { label: 'Легендарный', weight: 0.7, catchRate: 0.06, flee: 0.30, xp: 2000 },
   };
   const BALLS = {
-    basic: { name: 'Мяч',       icon: '🔴', mult: 1,   css: '' },
-    great: { name: 'Супермяч',  icon: '🔵', mult: 1.5, css: 'great' },
-    ultra: { name: 'Ультрамяч', icon: '🟡', mult: 2,   css: 'ultra' },
+    basic: { name: 'Покебол',   icon: '🔴', mult: 1,   css: '' },
+    great: { name: 'Грейтбол',  icon: '🔵', mult: 1.5, css: 'great' },
+    ultra: { name: 'Ультрабол', icon: '🟡', mult: 2,   css: 'ultra' },
   };
 
   const CELL = 0.0012;        // ~130 m grid cell
@@ -235,7 +376,7 @@
   const DEFAULT_POS = [55.7539, 37.6208]; // Red Square, Moscow
 
   // ---------- Storage ----------
-  const SAVE_KEY = 'monstro-go-v1';
+  const SAVE_KEY = 'pokemon-go-v1';
   const defaultState = () => ({
     xp: 0, balls: { basic: 20, great: 3, ultra: 0 },
     seen: {}, caught: {}, mons: [], gone: {}, stops: {}, totalCaught: 0, walked: 0,
@@ -270,7 +411,7 @@
     const before = levelFromXp(S.xp).lvl; S.xp += n; const after = levelFromXp(S.xp);
     if (after.lvl > before) {
       S.balls.basic += 10; S.balls.great += 5; if (after.lvl >= 5) S.balls.ultra += 3;
-      setTimeout(() => popup(`<div class="big">🎉</div><h2>Уровень ${after.lvl}!</h2><p>Награда: мячи и шанс встретить редких монстров.</p><button class="btn" data-ok>Круто!</button>`), 600);
+      setTimeout(() => popup(`<div class="big">🎉</div><h2>Уровень ${after.lvl}!</h2><p>Награда: покеболы и шанс встретить редких покемонов.</p><button class="btn" data-ok>Круто!</button>`), 600);
     }
     save(); renderHud();
   }
@@ -370,12 +511,12 @@
         v.m.setIcon(stopIcon(v.s));
       }
     });
-    $('status').textContent = (demo ? 'Демо-режим · ' : '') + (near ? `Рядом монстров: ${near}` : 'Гуляй, чтобы найти монстров');
+    $('status').textContent = (demo ? 'Демо-режим · ' : '') + (near ? `Рядом покемонов: ${near}` : 'Гуляй, чтобы найти покемонов');
     cleanupGone();
   }
   function monIcon(mon, close) {
-    return L.divIcon({ className: '', iconSize: [40, 40], iconAnchor: [20, 30],
-      html: `<div class="mon ${close ? '' : 'far'} ${mon.sp.rarity >= 3 ? 'rare' : ''}">${mon.sp.e}</div>` });
+    return L.divIcon({ className: '', iconSize: [56, 56], iconAnchor: [28, 44],
+      html: `<div class="mon ${close ? '' : 'far'} ${mon.sp.rarity >= 3 ? 'rare' : ''}">${sprite(mon.sp)}</div>` });
   }
   function stopIcon(s) {
     const used = S.stops[s.id] && Date.now() - S.stops[s.id] < STOP_COOLDOWN;
@@ -411,8 +552,8 @@
   let enc = null;
   function tryEncounter(mon) {
     const d = dist(pos, mon.ll);
-    if (d > CATCH_RADIUS) return toast(`${mon.sp.e} слишком далеко<br><small>${Math.round(d)} м — подойди ближе</small>`);
-    if (S.balls.basic + S.balls.great + S.balls.ultra === 0) return toast('Нет мячей! Найди 🎁');
+    if (d > CATCH_RADIUS) return toast(`${sprite(mon.sp, 'sm')}<br>${mon.sp.name} слишком далеко<br><small>${Math.round(d)} м — подойди ближе</small>`);
+    if (S.balls.basic + S.balls.great + S.balls.ultra === 0) return toast('Нет покеболов! Найди покестоп 🎁');
     startEncounter(mon);
   }
 
@@ -423,9 +564,9 @@
     $('encounter').classList.toggle('night', isNight());
     $('encName').textContent = `${mon.sp.name} · CP ${mon.cp}`;
     $('encInfo').textContent = `${mon.sp.type} · ${RARITY[mon.sp.rarity].label}`;
-    $('encBody').textContent = mon.sp.e;
+    $('encBody').innerHTML = `<img src="${artwork(mon.sp)}" alt="${mon.sp.name}" draggable="false">`;
     $('encBody').style.visibility = 'visible';
-    $('encHint').textContent = 'Смахни мяч вверх. Бросай, когда кольцо маленькое!';
+    $('encHint').textContent = 'Смахни покебол вверх. Бросай, когда кольцо маленькое!';
     resetBall();
     renderBallPicker();
     $('encounter').classList.add('on');
@@ -498,7 +639,7 @@
   });
 
   function throwBall(slope) {
-    if (S.balls[enc.ball] <= 0) return toast('Закончились такие мячи');
+    if (S.balls[enc.ball] <= 0) return toast('Закончились такие покеболы');
     enc.busy = true;
     S.balls[enc.ball]--; save(); renderHud(); renderBallPicker();
 
@@ -563,7 +704,7 @@
       cancelAnimationFrame(enc.raf); enc = null;
       $('encounter').classList.remove('on');
       addXp(xp);
-      popup(`<div class="big">${sp.e}</div><h2>Пойман ${sp.name}!</h2>
+      popup(`<div class="big">${sprite(sp, 'lg')}</div><h2>Пойман ${sp.name}!</h2>
         <p>CP ${mon.cp} · ${RARITY[sp.rarity].label}<br>+${xp} XP${first ? ' (новый вид!)' : ''}</p>
         <button class="btn" data-ok>Отлично</button>`);
       refreshWorld();
@@ -574,13 +715,13 @@
     if (Math.random() < RARITY[mon.sp.rarity].flee + enc.fails * 0.03) {
       S.gone[mon.id] = Math.floor(Date.now() / WINDOW_MS); save();
       $('encBody').style.visibility = 'hidden';
-      toast(`${mon.sp.e} убежал…`, 1500);
+      toast(`${mon.sp.name} убежал…`, 1500);
       setTimeout(endEncounter, 1300);
       return;
     }
     toast('Вырвался!', 900);
     resetBall(); enc.busy = false;
-    if (!S.balls.basic && !S.balls.great && !S.balls.ultra) { toast('Мячи закончились', 1400); setTimeout(endEncounter, 1200); }
+    if (!S.balls.basic && !S.balls.great && !S.balls.ultra) { toast('Покеболы закончились', 1400); setTimeout(endEncounter, 1200); }
     else if (!S.balls[enc.ball]) { enc.ball = S.balls.basic ? 'basic' : S.balls.great ? 'great' : 'ultra'; renderBallPicker(); }
   }
 
@@ -590,7 +731,7 @@
     const caughtSpecies = Object.keys(S.caught).length;
     $('dexStats').innerHTML = `
       <div><b>${caughtSpecies}/${SPECIES.length}</b><span>видов поймано</span></div>
-      <div><b>${S.totalCaught}</b><span>всего монстров</span></div>
+      <div><b>${S.totalCaught}</b><span>всего покемонов</span></div>
       <div><b>${(S.walked / 1000).toFixed(2)} км</b><span>пройдено</span></div>`;
     document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === dexTab));
     if (dexTab === 'species') {
@@ -598,13 +739,13 @@
         const c = S.caught[s.id], seen = S.seen[s.id];
         return `<div class="card ${c ? '' : 'unknown'}"><span class="num">#${String(s.id).padStart(3, '0')}</span>
           ${c ? `<span class="badge">×${c}</span>` : ''}
-          <div class="e">${s.e}</div><div class="n">${c || seen ? s.name : '???'}</div>
+          <div class="e">${sprite(s)}</div><div class="n">${c || seen ? s.name : '???'}</div>
           <div class="s">${c ? s.type + ' · ' + RARITY[s.rarity].label : seen ? 'Встречен' : 'Не найден'}</div></div>`;
       }).join('') + '</div>';
     } else {
       $('dexBody').innerHTML = S.mons.length ? '<div class="list">' + S.mons.map((m) => {
         const s = SPECIES.find((x) => x.id === m.sp);
-        return `<div class="row"><div class="e">${s.e}</div><div class="grow"><b>${s.name}</b><br>
+        return `<div class="row"><div class="e">${sprite(s)}</div><div class="grow"><b>${s.name}</b><br>
           <small>${s.type} · ${new Date(m.t).toLocaleDateString('ru-RU')}</small></div><b>CP ${m.cp}</b></div>`;
       }).join('') + '</div>' : '<p style="color:var(--muted)">Пока никого. Выходи на прогулку!</p>';
     }
@@ -617,7 +758,7 @@
 
   $('btnMenu').addEventListener('click', () => {
     popup(`<h2>Меню</h2>
-      <p>Гуляй по-настоящему — монстры появляются рядом с тобой и меняются каждые 10 минут. 🎁 — точки снабжения с мячами.</p>
+      <p>Гуляй по-настоящему — покемоны появляются рядом с тобой и меняются каждые 10 минут. 🎁 — покестопы с покеболами.</p>
       <div class="actions" style="flex-direction:column">
         <button class="btn" id="mDemo">${demo ? 'Вернуться к GPS' : 'Демо-режим (без GPS)'}</button>
         <button class="btn ghost" id="mReset">Сбросить прогресс</button>
