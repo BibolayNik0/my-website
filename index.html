@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ГаражГид — ремонт авто своими руками</title>
+  <meta name="description" content="Пошаговые инструкции по ремонту и обслуживанию автомобиля своими руками: с фото, списком инструментов и советами.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <a class="logo" href="index.html">🔧 <span class="logo-text">Гараж<span>Гид</span></span></a>
+      <nav class="nav">
+        <a href="#guides">Инструкции</a>
+        <a href="#why">О проекте</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <h1>Ремонт машины <em>своими руками</em> — шаг за шагом</h1>
+      <p>Понятные инструкции с фото и схемами: что купить, какие инструменты нужны и как не ошибиться. Без воды и лишних слов.</p>
+      <form class="search" onsubmit="return false">
+        <input id="search" type="search" placeholder="Например: замена масла" aria-label="Поиск инструкции">
+        <button type="submit">Найти</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="section" id="guides">
+    <div class="container">
+      <h2>Инструкции</h2>
+      <p class="lead">Начните с простого — даже без опыта справитесь за вечер.</p>
+
+      <div class="categories" id="categories">
+        <button class="chip active" data-cat="all">Все</button>
+        <button class="chip" data-cat="engine">Двигатель</button>
+        <button class="chip" data-cat="brakes">Тормоза</button>
+        <button class="chip" data-cat="electric">Электрика</button>
+        <button class="chip" data-cat="filters">Фильтры</button>
+      </div>
+
+      <div class="grid" id="grid">
+        <a class="card" href="articles/oil-change.html" data-cat="engine filters" data-title="замена моторного масла и масляного фильтра">
+          <div class="thumb">
+            <svg viewBox="0 0 160 90" aria-hidden="true">
+              <rect width="160" height="90" fill="#fdebe0"/>
+              <path d="M60 30h30l8 10v32a4 4 0 0 1-4 4H60a4 4 0 0 1-4-4V34a4 4 0 0 1 4-4z" fill="#e2570f"/>
+              <rect x="64" y="22" width="14" height="8" rx="2" fill="#1c1f24"/>
+              <rect x="62" y="46" width="30" height="16" rx="2" fill="#fff" opacity=".9"/>
+              <text x="77" y="58" font-size="9" font-family="sans-serif" font-weight="700" text-anchor="middle" fill="#1c1f24">5W-30</text>
+              <path d="M112 44c0 0-8 10-8 15a8 8 0 0 0 16 0c0-5-8-15-8-15z" fill="#b7791f"/>
+            </svg>
+          </div>
+          <div class="body">
+            <h3>Замена моторного масла и фильтра</h3>
+            <p>Самая частая процедура ТО. Сэкономите на сервисе и будете уверены в качестве масла.</p>
+            <div class="meta">
+              <span class="tag new">Новое</span>
+              <span class="tag easy">Легко</span>
+              <span class="tag">⏱ 40–60 мин</span>
+            </div>
+          </div>
+        </a>
+
+        <div class="card soon" data-cat="brakes" data-title="замена передних тормозных колодок">
+          <div class="thumb">
+            <svg viewBox="0 0 160 90" aria-hidden="true"><circle cx="80" cy="45" r="28" fill="none" stroke="#5f6670" stroke-width="8"/><circle cx="80" cy="45" r="8" fill="#5f6670"/><path d="M98 22a32 32 0 0 1 10 23" stroke="#1c1f24" stroke-width="10" fill="none"/></svg>
+          </div>
+          <div class="body">
+            <h3>Замена тормозных колодок</h3>
+            <p>Как понять, что колодки износились, и поменять их на передней оси.</p>
+            <div class="meta"><span class="tag">Скоро</span><span class="tag mid">Средне</span></div>
+          </div>
+        </div>
+
+        <div class="card soon" data-cat="filters" data-title="замена воздушного фильтра двигателя">
+          <div class="thumb">
+            <svg viewBox="0 0 160 90" aria-hidden="true"><rect x="45" y="25" width="70" height="40" rx="4" fill="#5f6670"/><g stroke="#dfe1e4" stroke-width="3"><path d="M55 30v30M65 30v30M75 30v30M85 30v30M95 30v30M105 30v30"/></g></svg>
+          </div>
+          <div class="body">
+            <h3>Замена воздушного фильтра</h3>
+            <p>5 минут и ни одного инструмента — идеально для первого раза.</p>
+            <div class="meta"><span class="tag">Скоро</span><span class="tag easy">Легко</span></div>
+          </div>
+        </div>
+
+        <div class="card soon" data-cat="engine electric" data-title="замена свечей зажигания">
+          <div class="thumb">
+            <svg viewBox="0 0 160 90" aria-hidden="true"><rect x="72" y="12" width="16" height="26" rx="3" fill="#dfe1e4" stroke="#5f6670" stroke-width="2"/><rect x="68" y="38" width="24" height="12" fill="#5f6670"/><rect x="75" y="50" width="10" height="18" fill="#5f6670"/><path d="M80 68v8h6" stroke="#5f6670" stroke-width="3" fill="none"/></svg>
+          </div>
+          <div class="body">
+            <h3>Замена свечей зажигания</h3>
+            <p>Двигатель троит или плохо заводится? Возможно, дело в свечах.</p>
+            <div class="meta"><span class="tag">Скоро</span><span class="tag mid">Средне</span></div>
+          </div>
+        </div>
+
+        <div class="card soon" data-cat="electric" data-title="проверка и замена аккумулятора акб">
+          <div class="thumb">
+            <svg viewBox="0 0 160 90" aria-hidden="true"><rect x="48" y="28" width="64" height="40" rx="4" fill="#5f6670"/><rect x="56" y="22" width="10" height="6" fill="#5f6670"/><rect x="94" y="22" width="10" height="6" fill="#5f6670"/><text x="61" y="52" font-size="14" fill="#fff" text-anchor="middle" font-family="sans-serif">−</text><text x="99" y="52" font-size="14" fill="#fff" text-anchor="middle" font-family="sans-serif">+</text></svg>
+          </div>
+          <div class="body">
+            <h3>Проверка и замена АКБ</h3>
+            <p>Как замерить напряжение мультиметром и правильно снять аккумулятор.</p>
+            <div class="meta"><span class="tag">Скоро</span><span class="tag easy">Легко</span></div>
+          </div>
+        </div>
+
+        <div class="card soon" data-cat="filters" data-title="замена салонного фильтра">
+          <div class="thumb">
+            <svg viewBox="0 0 160 90" aria-hidden="true"><rect x="50" y="30" width="60" height="30" rx="3" fill="#5f6670"/><path d="M55 45q5-8 10 0t10 0 10 0 10 0 10 0" stroke="#dfe1e4" stroke-width="3" fill="none"/></svg>
+          </div>
+          <div class="body">
+            <h3>Замена салонного фильтра</h3>
+            <p>Убираем запах и пыль в салоне. Обычно фильтр прячется за бардачком.</p>
+            <div class="meta"><span class="tag">Скоро</span><span class="tag easy">Легко</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="empty" id="empty">Ничего не нашлось. Попробуйте другой запрос.</p>
+    </div>
+  </section>
+
+  <section class="section" id="why" style="padding-top:0">
+    <div class="container">
+      <h2>Почему ГаражГид</h2>
+      <p class="lead">Инструкции, которые можно открыть с телефона прямо под капотом.</p>
+      <div class="features">
+        <div class="feature"><div class="icon">📸</div><h3>Фото на каждом шаге</h3><p>Видно, какой болт откручивать и куда смотреть.</p></div>
+        <div class="feature"><div class="icon">🧰</div><h3>Список инструментов</h3><p>Заранее знаете, что купить и подготовить.</p></div>
+        <div class="feature"><div class="icon">✅</div><h3>Чек-лист прогресса</h3><p>Отмечайте шаги — сайт запомнит, где вы остановились.</p></div>
+        <div class="feature"><div class="icon">⚠️</div><h3>Предупреждения</h3><p>Где можно обжечься, сорвать резьбу или что-то сломать.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <span>© 2026 ГаражГид</span>
+      <span>Работы с автомобилем вы выполняете на свой риск. При сомнениях обратитесь в сервис.</span>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
