@@ -43,7 +43,11 @@ npm run build      # dist/zips/NNN-slug.zip — 100 архивов, index.html �
 npm run check      # дымовой тест всех игр в headless Chromium
 ```
 
-Загрузите zip в черновик игры. Для карточки нужны иконка 512×512 и обложка 800×470 — их можно снять скриншотом меню игры (герой крупным планом на фоне палитры игры).
+```bash
+npm run promo      # dist/promo/NNN-slug/: icon-512.png, cover-800x470-{ru,en}.png, screenshot-{port,land}-{1..3}.jpg, listing.txt
+```
+
+Загрузите zip в черновик игры, а из папки `dist/promo/NNN-slug/` — иконку, обложку и скриншоты. Название, описание, «как играть» и категорию скопируйте из `listing.txt` (или из сводной таблицы `dist/promo/listings.csv`, открывается в Excel).
 
 Языки: игра автоматически выбирает русский или английский по `environment.i18n.lang`; в консоли укажите оба языка и заполните название/описание из `catalog/games.js`.
 

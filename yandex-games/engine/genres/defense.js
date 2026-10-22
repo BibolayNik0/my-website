@@ -39,7 +39,7 @@ YG.register('defense', {
         if (waveLeft <= 0 && !foes.length) { wave++; waveLeft = 8 + wave * 2; api.coins(wave * 2); api.sfx('win'); api.hud((api.lang === 'ru' ? 'Волна ' : 'Wave ') + wave + ' · ' + '❤️'.repeat(hp)); }
         turretT -= dt;
         if (turretT <= 0 && foes.length) {
-          turretT = Math.max(0.15, 1.2 - api.power() * 0.1);
+          turretT = Math.max(0.3, 2.2 - api.power() * 0.18); // базовая пушка лишь помогает, основная работа — тапы
           const target = foes.reduce((a, f) => (f.y > a.y ? f : a), foes[0]);
           shots.push({ x: C.W / 2, y: baseY(), tx: target.x, ty: target.y, t: 0.15, f: target });
         }

@@ -6,6 +6,7 @@
   "scripts": {
     "build": "node tools/build.mjs",
     "serve": "python3 -m http.server 8080",
-    "check": "node tools/check.mjs"
+    "check": "node tools/check.mjs",
+    "promo": "node tools/promo.mjs"
   }
 }

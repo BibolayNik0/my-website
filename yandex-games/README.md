@@ -11,6 +11,7 @@
 npm run serve        # http://localhost:8080 — витрина всех 100 игр (index.html) и предпросмотр (play.html?g=slug)
 npm run build        # dist/zips/NNN-slug.zip — архивы для загрузки в консоль
 npm run check        # дымовой тест всех игр в headless Chromium (нужен Playwright)
+npm run promo        # dist/promo: иконки, обложки, скриншоты и тексты карточек для консоли
 ```
 
 Локально SDK Яндекса не подключён: покупки и реклама эмулируются через диалог подтверждения.
@@ -26,6 +27,7 @@ npm run check        # дымовой тест всех игр в headless Chrom
 | `catalog/games.js` | 100 игр: жанр, название и описание ru/en, палитра, спрайты, баланс |
 | `tools/build.mjs` | сборка каждой игры в один `index.html` (~80 КБ, ~25 КБ в zip) |
 | `tools/check.mjs` | автотест: раунд со случайным вводом, все вкладки, сундук, покупка |
+| `tools/promo.mjs` | промо для консоли: иконка 512×512, обложки 800×470 ru/en, 6 скриншотов, `listing.txt`, общий `listings.csv` |
 
 ## Жанры
 
