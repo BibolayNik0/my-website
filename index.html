@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Toyota Caldina — разборка</title>
+  <meta name="description" content="Интерактивная 3D-модель Toyota Caldina 2003 (T240), которую можно разобрать до винтика: каждая деталь выделяется и подписывается.">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <header class="topbar">
+    <button id="toggleSidebar" class="icon-btn" title="Список деталей" aria-label="Список деталей">☰</button>
+    <div class="brand">
+      <h1>Toyota Caldina <span>T240 · 2003</span></h1>
+      <p>Модель для разборки · <b id="partCount">0</b> деталей</p>
+    </div>
+  </header>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="search">
+      <input id="search" type="search" placeholder="Найти деталь…" autocomplete="off">
+    </div>
+    <div id="tree" class="tree"></div>
+  </aside>
+
+  <section id="info" class="info hidden" aria-live="polite">
+    <button id="infoClose" class="close" aria-label="Закрыть">×</button>
+    <div class="info-group" id="infoGroup"></div>
+    <h2 id="infoName"></h2>
+    <p id="infoDesc"></p>
+    <dl class="info-meta">
+      <div><dt>Одинаковых в машине</dt><dd id="infoCount"></dd></div>
+      <div><dt>Размер, мм</dt><dd id="infoSize"></dd></div>
+    </dl>
+    <div class="info-actions">
+      <button id="btnFocus">Приблизить</button>
+      <button id="btnHide">Снять деталь</button>
+      <button id="btnIsolate">Только эта</button>
+    </div>
+  </section>
+
+  <div id="tooltip" class="tooltip hidden"></div>
+
+  <footer class="controls">
+    <div class="stage-row">
+      <button id="btnAssemble" class="pill">Собрать</button>
+      <div class="slider-wrap">
+        <input id="explode" type="range" min="0" max="1000" value="0" aria-label="Степень разборки">
+        <div class="stages"><span>Кузов</span><span>Агрегаты</span><span>До винтика</span></div>
+      </div>
+      <button id="btnExplode" class="pill accent">Разобрать</button>
+    </div>
+    <div class="tool-row">
+      <label class="chk"><input type="checkbox" id="xray"> Прозрачный кузов</label>
+      <label class="chk"><input type="checkbox" id="autorotate"> Вращение</label>
+      <button id="btnShowAll" class="link">Вернуть снятые</button>
+      <button id="btnReset" class="link">Сбросить вид</button>
+    </div>
+  </footer>
+
+  <div id="loading" class="loading">Собираем Калдину…</div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
