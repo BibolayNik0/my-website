@@ -1,10 +1,11 @@
 // Процедурная модель Toyota Caldina (T240, 2003) — каждая деталь отдельным объектом.
 import * as THREE from 'three';
 import {
-  D, v3, bodyScale, deform, smooth, shape, path, extrudeZ, strip, sideZ, box, cyl, tube,
+  D, v3, deform, smooth, shape, extrudeZ, strip, box, cyl, tube,
   sphere, merge, boltGeo, nutGeo, springGeo, beltGeo,
 } from './geo.js';
 import { DESC } from './desc.js';
+import { buildBody } from './carbody.js';
 
 const { W, FA, RA, WR, TR, AR, AY } = D;
 const SIDES = [1, -1];
@@ -68,13 +69,11 @@ export function makeMaterials() {
 export function buildCar(reg, M) {
   const add = (objs, o) => reg.add(objs, { ...o, desc: o.desc || DESC[o.type] });
   const mesh = (g, m) => new THREE.Mesh(g, m);
-  const skin = (g, m = M.paint) => mesh(smooth(deform(g)), m);
   const bolt = (pos, dir, o, r = 0.006, len = 0.03, mat = M.steel) =>
     add(mesh(boltGeo(pos, dir, r, len), mat), {
       type: 'bolt_body', name: 'Болт крепления', ...o,
       e2: o.e2 || dir.clone().normalize().multiplyScalar(0.12),
     });
-  const zAt = (x, y, z) => z * bodyScale(x, y);
 
   reg.group('body', { label: 'Кузов', spread: 0.1 });
   reg.group('glass', { label: 'Остекление' });
@@ -92,7 +91,7 @@ export function buildCar(reg, M) {
   reg.group('wheel', { label: 'Колёса', vec: [0, 0, 1.25], mirrorZ: true });
   reg.group('interior', { label: 'Салон', vec: [0, 1.05, 0], spread: 0.35 });
 
-  buildBody();
+  buildBody({ add, mesh, bolt, M, sn });
   buildEngine();
   buildTransmission();
   buildCooling();
@@ -103,252 +102,6 @@ export function buildCar(reg, M) {
   buildSteering();
   buildInterior();
   reg.finalize();
-
-  // ───────────────────────────── КУЗОВ ─────────────────────────────
-  function buildBody() {
-    const T = 0.035;
-    const HL = [[2.18, 0.695], [2.0, 0.75], [1.7, 0.8], [1.3, 0.855], [0.975, 0.905]];
-
-    // Несущий каркас
-    add(skin(box(-0.1, 0.24, 0, 2.1, 0.04, 1.64)), { group: 'body', type: 'floor', name: 'Пол кузова (салон)' });
-    add(skin(merge([box(-1.66, 0.52, 0, 1.0, 0.03, 1.56), box(-1.155, 0.39, 0, 0.03, 0.27, 1.56)])),
-      { group: 'body', type: 'trunkfloor', name: 'Пол багажника' });
-    add(skin(box(0.94, 0.6, 0, 0.03, 0.64, 1.62)), { group: 'body', type: 'firewall', name: 'Моторный щит' });
-    add(skin(merge([
-      box(2.03, 0.7, 0, 0.05, 0.04, 1.12), box(2.03, 0.27, 0, 0.05, 0.04, 1.12),
-      box(2.03, 0.485, 0.54, 0.05, 0.45, 0.05), box(2.03, 0.485, -0.54, 0.05, 0.45, 0.05),
-    ])), { group: 'body', type: 'radsupport', name: 'Панель передка (рамка радиатора)' });
-    add(skin(new THREE.BoxGeometry(0.04, 0.26, 1.6, 1, 4, 8).translate(-2.17, 0.42, 0)),
-      { group: 'body', type: 'rearpanel', name: 'Задняя панель кузова' });
-    for (const s of SIDES) {
-      add(skin(box(-0.02, 0.22, s * 0.835, 1.98, 0.12, 0.07)), { group: 'body', type: 'sill', name: `Порог ${sn(s)}` });
-      add(skin(box(1.55, 0.37, s * 0.58, 1.2, 0.1, 0.08)), { group: 'body', type: 'rail', name: `Лонжерон передний ${sn(s)}` });
-      add(skin(box(FA - 0.03, 0.76, s * 0.555, 0.26, 0.12, 0.14)), { group: 'body', type: 'tower', name: `Чашка передней стойки ${sn(s, 'f')}` });
-      const pil = (x, w, name) => add(skin(new THREE.BoxGeometry(w, 1.12, 0.05, 1, 8, 1).translate(x, 0.84, s * 0.8)),
-        { group: 'body', type: 'pillar', name: `${name} ${sn(s, 'f')}` });
-      pil(-0.215, 0.09, 'Стойка B');
-      pil(-0.99, 0.08, 'Стойка C');
-      add(skin(new THREE.CylinderGeometry(0.4, 0.4, 0.2, 28, 1, true, Math.PI / 2, Math.PI)
-        .rotateX(Math.PI / 2).translate(RA, AY, s * 0.6)), { group: 'body', type: 'pillar', name: `Арка заднего колеса внутренняя ${sn(s, 'f')}`, desc: 'Внутренняя арка заднего колеса — часть каркаса, образует нишу колеса в багажнике.' });
-    }
-
-    // Капот
-    const hood = add(skin(strip(HL, 0.025, -0.835, 0.835)), { group: 'body', type: 'hood', name: 'Капот', e0: [0.9, 2.3, 0] });
-    for (const s of SIDES) {
-      const h = add(mesh(box(0.99, 0.87, s * 0.6, 0.06, 0.04, 0.03), M.darkSteel),
-        { group: 'body', type: 'hinge', name: `Петля капота ${sn(s, 'f')}`, host: hood, e2: [-0.18, -0.08, 0] });
-      for (const dz of [-0.008, 0.008]) bolt(v3(1.005, 0.892, s * 0.6 + dz), v3(0, 1, 0), { group: 'body', host: h, name: 'Болт петли капота' }, 0.005, 0.02);
-    }
-    add(skin(box(0.965, 0.905, 0, 0.07, 0.02, 1.56), M.black), { group: 'ext', type: 'cowl', name: 'Жабо (решётка под лобовым стеклом)', e0: [0.4, 1.2, 0] });
-
-    // Крылья
-    for (const s of SIDES) {
-      const sh = new THREE.Shape();
-      sh.moveTo(2.14, 0.57); sh.lineTo(2.05, 0.31); sh.lineTo(1.72, 0.31);
-      sh.absarc(FA, AY, AR, 0, Math.PI, false);
-      sh.lineTo(0.965, 0.9); sh.lineTo(1.3, 0.852); sh.lineTo(1.7, 0.797); sh.lineTo(2.0, 0.747); sh.lineTo(2.16, 0.7);
-      sh.closePath();
-      const f = add(skin(extrudeZ(sh, ...sideZ(s, T), 0.007)), { group: 'body', type: 'fender', name: `Крыло переднее ${sn(s, 'n')}`, e0: [0.6, 1.0, s * 2.25] });
-      for (const [x, y] of [[1.1, 0.882], [1.5, 0.826], [1.9, 0.768]]) {
-        bolt(v3(x, y + 0.004, zAt(x, y, s * (W - 0.015))), v3(0, 1, 0), { group: 'body', host: f, name: 'Болт крепления крыла' }, 0.005, 0.025);
-      }
-      add(mesh(sphere(v3(1.78, 0.62, zAt(1.78, 0.62, s * W) + s * 0.004), 0.03, 1, 0.45, 0.25), M.amber),
-        { group: 'light', type: 'repeater', name: `Повторитель поворота ${sn(s)}`, host: f, e2: [0, 0, s * 0.15] });
-      // подкрылки
-      for (const ax of AXLES) {
-        add(mesh(new THREE.CylinderGeometry(0.385, 0.385, 0.24, 28, 1, true, Math.PI / 2, Math.PI)
-          .rotateX(Math.PI / 2).translate(ax.x, AY, s * 0.74), M.black),
-          { group: 'ext', type: 'liner', name: `Подкрылок ${ax.m} ${sn(s)}`, e0: [0, 0.55, s * 0.95] });
-      }
-    }
-
-    // Двери
-    const doors = [
-      {
-        key: 'front', name: 'Дверь передняя', type: 'door_front', e0: [0, 0.9, 2.3],
-        outline: [[0.95, 0.27], [0.95, 0.915], [0.17, 1.404], [-0.205, 1.404], [-0.205, 0.27]],
-        hole: [[0.76, 0.996], [0.184, 1.355], [-0.16, 1.355], [-0.16, 0.99]],
-        handle: -0.08, hingeX: 0.955, hingeDir: 1, lockX: -0.19,
-      },
-      {
-        key: 'rear', name: 'Дверь задняя', type: 'door_rear', e0: [-0.15, 0.9, 2.3],
-        outline: [[-0.225, 0.27], [-0.225, 1.404], [-0.98, 1.404], [-0.98, 0.27]],
-        hole: [[-0.27, 0.99], [-0.93, 1.0], [-0.93, 1.355], [-0.27, 1.355]],
-        handle: -0.86, hingeX: -0.235, hingeDir: 1, lockX: -0.965,
-      },
-    ];
-    for (const s of SIDES) {
-      for (const d of doors) {
-        const sh = shape(d.outline);
-        sh.holes.push(path(d.hole));
-        const door = add(skin(extrudeZ(sh, ...sideZ(s, T), 0.007)),
-          { group: 'body', type: d.type, name: `${d.name} ${sn(s, 'f')}`, e0: [d.e0[0], d.e0[1], s * d.e0[2]] });
-        add(mesh(deform(extrudeZ(shape(d.hole), ...sideZ(s, 0.006, 0.016), 0.009)), M.glass),
-          { group: 'glass', type: 'door_glass', name: `Стекло двери ${d.key === 'front' ? 'передней' : 'задней'} ${s > 0 ? 'правой' : 'левой'}`, host: door, e1: [0, 0.5, 0] });
-        const x0 = d.outline[0][0], x1 = d.outline[d.outline.length - 1][0];
-        const reg_ = add(mesh(merge([
-          box(x0 - 0.25 * (x0 - x1), 0.66, s * (W - 0.055), 0.02, 0.6, 0.01),
-          box(x0 - 0.7 * (x0 - x1), 0.66, s * (W - 0.055), 0.02, 0.6, 0.01),
-          cyl(v3((x0 + x1) / 2, 0.45, s * (W - 0.06)), v3((x0 + x1) / 2, 0.45, s * (W - 0.04)), 0.045),
-        ]), M.darkSteel), { group: 'ext', type: 'regulator', name: `Стеклоподъёмник ${d.key === 'front' ? 'передний' : 'задний'} ${sn(s)}`, host: door, e1: [0, 0, -s * 0.28] });
-        add(mesh(box(d.lockX, 0.82, s * (W - 0.05), 0.03, 0.08, 0.04), M.darkSteel),
-          { group: 'ext', type: 'lock', name: `Замок двери ${d.key === 'front' ? 'передней' : 'задней'} ${s > 0 ? 'правой' : 'левой'}`, host: door, e1: [-0.15, 0, -s * 0.12] });
-        add(mesh(box(d.handle, 0.87, s * (W + 0.008), 0.14, 0.035, 0.02), M.paint),
-          { group: 'ext', type: 'door_handle', name: `Ручка двери ${d.key === 'front' ? 'передней' : 'задней'} ${s > 0 ? 'правой' : 'левой'}`, host: door, e2: [0, 0, s * 0.14] });
-        const trimSh = shape([[x0 - 0.02, 0.3], [x0 - 0.02, 0.98], [x1 + 0.02, 0.98], [x1 + 0.02, 0.3]]);
-        add(mesh(smooth(deform(extrudeZ(trimSh, ...sideZ(s, 0.022, 0.055), 0.006))), M.fabric),
-          { group: 'interior', type: 'door_trim', name: `Обшивка двери ${d.key === 'front' ? 'передней' : 'задней'} ${s > 0 ? 'правой' : 'левой'}`, host: door, e1: [0, 0, -s * 0.45] });
-        for (const hy of [0.45, 0.8]) {
-          const h = add(mesh(box(d.hingeX, hy, s * (W - 0.05), 0.05, 0.08, 0.04), M.darkSteel),
-            { group: 'body', type: 'hinge', name: `Петля двери ${d.key === 'front' ? 'передней' : 'задней'} ${s > 0 ? 'правой' : 'левой'} ${hy < 0.6 ? 'нижняя' : 'верхняя'}`, host: door, e2: [0.16, 0, 0] });
-          for (const dy of [-0.022, 0.022]) bolt(v3(d.hingeX + 0.03, hy + dy, s * (W - 0.05)), v3(1, 0, 0), { group: 'body', host: h, name: 'Болт петли двери' }, 0.005, 0.02);
-        }
-        if (d.key === 'front') {
-          const mx = 0.78, my = 1.04, mz = s * 0.97;
-          const mir = add([
-            mesh(merge([sphere(v3(mx, my, mz), 0.1, 0.55, 0.55, 1), box(0.8, 1.0, s * 0.875, 0.08, 0.05, 0.07)]), M.paint),
-          ], { group: 'ext', type: 'mirror', name: `Зеркало наружное ${sn(s, 'n')}`, host: door, e1: [0, 0.05, s * 0.32] });
-          add(mesh(sphere(v3(mx - 0.054, my, mz), 0.085, 0.04, 0.5, 0.92), M.chrome),
-            { group: 'ext', type: 'mirror_glass', name: `Зеркальный элемент ${sn(s)}`, host: mir, e2: [-0.14, 0, 0] });
-        }
-      }
-    }
-
-    // Задние боковины
-    for (const s of SIDES) {
-      const sh = new THREE.Shape();
-      sh.moveTo(-0.995, 1.404); sh.lineTo(-0.995, 0.31);
-      sh.absarc(RA, AY, AR, 0, Math.PI, false);
-      sh.lineTo(-2.18, 0.31); sh.lineTo(-2.24, 0.56); sh.lineTo(-2.16, 0.98); sh.lineTo(-2.02, 1.37); sh.lineTo(-1.92, 1.42);
-      sh.closePath();
-      const hole = [[-1.04, 0.995], [-2.08, 0.995], [-1.97, 1.33], [-1.88, 1.36], [-1.04, 1.36]];
-      sh.holes.push(path(hole));
-      const q = add(skin(extrudeZ(sh, ...sideZ(s, T), 0.007)), { group: 'body', type: 'quarter', name: `Боковина задняя ${sn(s, 'f')}`, e0: [-0.5, 0.95, s * 2.25] });
-      add(mesh(deform(extrudeZ(shape(hole), ...sideZ(s, 0.006, 0.016), 0.009)), M.glass),
-        { group: 'glass', type: 'quarter_glass', name: `Стекло боковое багажника ${sn(s, 'n')}`, host: q, e1: [0, 0, s * 0.28] });
-      if (s < 0) {
-        add(mesh(box(-1.75, 0.86, -(W + 0.003), 0.14, 0.11, 0.008), M.paint),
-          { group: 'ext', type: 'fuel_door', name: 'Лючок бензобака', host: q, e2: [0, 0, -0.14] });
-      }
-    }
-
-    // Крыша и стёкла
-    add(skin(strip([[0.16, 1.41], [-0.4, 1.445], [-1.2, 1.445], [-1.92, 1.42]], 0.03, -W, W)),
-      { group: 'body', type: 'roof', name: 'Панель крыши', e0: [-0.3, 2.45, 0] });
-    add(mesh(deform(strip([[0.97, 0.915], [0.16, 1.415]], 0.008, -0.845, 0.845, 0.003)), M.glass),
-      { group: 'glass', type: 'windshield', name: 'Лобовое стекло', e0: [1.0, 1.75, 0] });
-
-    // Дверь багажника
-    const tg = add([
-      skin(merge([
-        strip([[-1.9, 1.425], [-1.99, 1.4], [-2.03, 1.37]], 0.03, -0.86, 0.86),
-        strip([[-2.155, 0.99], [-2.2, 0.78], [-2.245, 0.565]], 0.035, -0.86, 0.86),
-        strip([[-2.03, 1.37], [-2.157, 0.99]], 0.035, 0.68, 0.86),
-        strip([[-2.03, 1.37], [-2.157, 0.99]], 0.035, -0.86, -0.68),
-      ])),
-      skin(strip([[-1.88, 1.448], [-1.98, 1.455], [-2.07, 1.41]], 0.02, -0.78, 0.78)),
-    ], { group: 'body', type: 'tailgate', name: 'Дверь багажника со спойлером', e0: [-1.55, 0.5, 0] });
-    add(mesh(deform(strip([[-2.025, 1.367], [-2.152, 0.995]], 0.006, -0.7, 0.7, 0.003)), M.glass),
-      { group: 'glass', type: 'rear_glass', name: 'Стекло двери багажника', host: tg, e1: [-0.32, 0.1, 0] });
-    add(mesh(box(-2.045, 1.425, 0, 0.03, 0.02, 0.3), M.redLens),
-      { group: 'light', type: 'stoplamp', name: 'Дополнительный стоп-сигнал', host: tg, e2: [-0.12, 0.1, 0] });
-    add(mesh(box(-2.205, 0.8, 0, 0.012, 0.05, 0.6), M.chrome),
-      { group: 'ext', type: 'door_handle', name: 'Накладка с ручкой двери багажника', host: tg, e2: [-0.14, 0, 0] });
-    add(mesh(box(-2.225, 0.68, 0, 0.012, 0.015, 0.12), M.lens),
-      { group: 'light', type: 'plate_lamp', name: 'Фонарь подсветки номера', host: tg, e2: [-0.12, -0.05, 0] });
-    add(mesh(emblemGeo().rotateY(-Math.PI / 2).translate(-2.212, 0.89, 0), M.chrome),
-      { group: 'ext', type: 'emblem', name: 'Эмблема Toyota задняя', host: tg, e2: [-0.16, 0, 0] });
-    const rwa = add(mesh(merge([box(-2.14, 1.06, 0.1, 0.02, 0.025, 0.36), cyl(v3(-2.15, 1.04, 0), v3(-2.18, 1.04, 0), 0.02)]), M.black),
-      { group: 'ext', type: 'wiper_arm', name: 'Рычаг заднего стеклоочистителя', host: tg, e2: [-0.18, 0, 0] });
-    add(mesh(box(-2.153, 1.08, 0.12, 0.012, 0.012, 0.38), M.rubber),
-      { group: 'ext', type: 'wiper_blade', name: 'Щётка заднего стеклоочистителя', host: rwa, e2: [-0.08, 0.08, 0] });
-    for (const s of SIDES) {
-      const h = add(mesh(box(-1.915, 1.41, s * 0.5, 0.06, 0.03, 0.04), M.darkSteel),
-        { group: 'body', type: 'hinge', name: `Петля двери багажника ${sn(s, 'f')}`, host: tg, e2: [0.16, 0.1, 0] });
-      bolt(v3(-1.9, 1.43, s * 0.5), v3(0, 1, 0), { group: 'body', host: h, name: 'Болт петли двери багажника' }, 0.005, 0.02);
-    }
-
-    // Бамперы
-    const fb = add([
-      skin(strip([[1.95, 0.2], [2.24, 0.21], [2.285, 0.32], [2.28, 0.5], [2.22, 0.56], [1.98, 0.565]], 0.035, -0.88, 0.88)),
-      ...SIDES.map((s) => {
-        const pts = [[1.98, 0.565], [1.98, 0.205], [1.7, 0.205]];
-        for (let i = 0; i <= 8; i++) { const a = (i / 8) * 0.72; pts.push([FA + AR * Math.cos(a), AY + AR * Math.sin(a)]); }
-        return skin(extrudeZ(shape(pts), ...(s > 0 ? [W - 0.01, W + 0.006] : [-W - 0.006, -W + 0.01]), 0.004));
-      }),
-    ], { group: 'body', type: 'bumper_f', name: 'Бампер передний', e0: [1.55, 0, 0] });
-    add(mesh(merge([box(2.289, 0.33, 0, 0.012, 0.11, 0.78), ...[-0.3, -0.1, 0.1, 0.3].map((z) => box(2.296, 0.33, z, 0.006, 0.1, 0.01))]), M.black),
-      { group: 'body', type: 'grille_lower', name: 'Решётка бампера нижняя', host: fb, e2: [0.14, 0, 0] });
-    for (const s of SIDES) {
-      add(mesh(merge([cyl(v3(2.27, 0.33, s * 0.6), v3(2.292, 0.33, s * 0.6), 0.042)]), M.lens),
-        { group: 'light', type: 'fog', name: `Противотуманная фара ${sn(s, 'f')}`, host: fb, e2: [0.16, 0, s * 0.1] });
-      bolt(v3(2.0, 0.57, s * 0.55), v3(0, 1, 0), { group: 'body', host: fb, name: 'Болт крепления бампера' }, 0.005, 0.02);
-      bolt(v3(1.8, 0.45, s * (W + 0.007)), v3(0, 0, s), { group: 'body', host: fb, name: 'Саморез бампера к крылу' }, 0.004, 0.02);
-    }
-    add(mesh(merge([
-      extrudeZ(shape([[2.165, 0.572], [2.215, 0.572], [2.198, 0.688], [2.15, 0.698]]), -0.39, 0.39, 0.004),
-    ]), M.black), { group: 'body', type: 'grille', name: 'Решётка радиатора', e0: [1.35, 0.32, 0] });
-    add(mesh(merge([box(2.205, 0.68, 0, 0.012, 0.012, 0.76), box(2.21, 0.6, 0, 0.012, 0.01, 0.76)]), M.chrome),
-      { group: 'body', type: 'grille', name: 'Хромированный молдинг решётки', e0: [1.45, 0.36, 0] });
-    add(mesh(emblemGeo().rotateY(Math.PI / 2).translate(2.222, 0.636, 0), M.chrome),
-      { group: 'ext', type: 'emblem', name: 'Эмблема Toyota передняя', e0: [1.6, 0.42, 0] });
-
-    const rb = add([
-      skin(strip([[-1.95, 0.565], [-2.22, 0.56], [-2.28, 0.5], [-2.285, 0.32], [-2.24, 0.21], [-1.95, 0.2]], 0.035, -0.88, 0.88)),
-      ...SIDES.map((s) => {
-        const pts = [[-1.95, 0.565], [-1.95, 0.205], [-1.74, 0.205]];
-        for (let i = 0; i <= 8; i++) { const a = Math.PI - (i / 8) * 0.72; pts.push([RA + AR * Math.cos(a), AY + AR * Math.sin(a)]); }
-        return skin(extrudeZ(shape(pts), ...(s > 0 ? [W - 0.01, W + 0.006] : [-W - 0.006, -W + 0.01]), 0.004));
-      }),
-    ],
-      { group: 'body', type: 'bumper_r', name: 'Бампер задний', e0: [-1.55, -0.05, 0] });
-    for (const s of SIDES) bolt(v3(-2.0, 0.57, s * 0.55), v3(0, 1, 0), { group: 'body', host: rb, name: 'Болт крепления бампера' }, 0.005, 0.02);
-
-    // Фары и фонари
-    for (const s of SIDES) {
-      const z0 = s > 0 ? 0.4 : -0.855, z1 = s > 0 ? 0.855 : -0.4;
-      const zh = (z) => zAt(2.18, 0.63, z);
-      const hl = add([
-        mesh(deform(extrudeZ(shape([[1.98, 0.575], [2.2, 0.575], [2.185, 0.682], [1.98, 0.735]]), z0 + 0.01, z1 - 0.01, 0)), M.chrome),
-        mesh(deform(extrudeZ(shape([[1.98, 0.565], [2.225, 0.565], [2.205, 0.69], [1.98, 0.745]]), z0, z1, 0.004)), M.lens),
-        mesh(merge([0.49, 0.7].map((z) => cyl(v3(2.17, 0.627, zh(s * z)), v3(2.205, 0.627, zh(s * z)), 0.036))), M.black),
-      ], { group: 'light', type: 'headlight', name: `Фара ${sn(s, 'f')}`, e0: [1.3, 0.45, s * 0.42] });
-      for (const [z, n] of [[0.49, 'ближнего'], [0.7, 'дальнего']]) {
-        add(mesh(merge([sphere(v3(2.15, 0.627, zh(s * z)), 0.012, 1.6, 1, 1), cyl(v3(2.08, 0.627, zh(s * z)), v3(2.135, 0.627, zh(s * z)), 0.014)]), M.white),
-          { group: 'light', type: 'bulb', name: `Лампа ${n} света ${sn(s, 'f')}`, host: hl, e2: [-0.25, 0, 0] });
-      }
-      bolt(v3(2.0, 0.74, zh(s * 0.62)), v3(0, 1, 0), { group: 'light', host: hl, name: 'Болт крепления фары' }, 0.005, 0.02);
-
-      const tz0 = s > 0 ? 0.66 : -0.865, tz1 = s > 0 ? 0.865 : -0.66;
-      const tlSide = shape([[-2.06, 1.0], [-2.168, 1.0], [-2.205, 0.82], [-2.232, 0.66], [-2.12, 0.66]]);
-      const tl = add([
-        mesh(smooth(deform(strip([[-2.168, 1.0], [-2.214, 0.8], [-2.242, 0.64]], 0.03, tz0, tz1, 0.004))), M.redLens),
-        mesh(smooth(deform(extrudeZ(tlSide, ...(s > 0 ? [W - 0.01, W + 0.008] : [-W - 0.008, -W + 0.01]), 0.003))), M.redLens),
-      ],
-        { group: 'light', type: 'taillight', name: `Фонарь задний ${sn(s)}`, e0: [-1.3, 0.45, s * 0.45] });
-      add(mesh(sphere(v3(-2.15, 0.85, zAt(-2.15, 0.85, s * 0.7)), 0.014), M.white),
-        { group: 'light', type: 'bulb', name: `Лампа стоп-сигнала ${s > 0 ? 'правая' : 'левая'}`, host: tl, e2: [0.18, 0, 0], desc: 'Лампа стоп-сигнала и габарита (21/5 Вт).' });
-    }
-
-    // Стеклоочистители
-    for (const [z, len, n] of [[0.42, 0.55, 'водителя'], [-0.2, 0.45, 'пассажира']]) {
-      const arm = add(mesh(merge([
-        cyl(v3(0.985, 0.9, z), v3(0.985, 0.94, z), 0.014),
-        box(0.955, 0.94, z - len / 2, 0.02, 0.012, len),
-      ]), M.black), { group: 'ext', type: 'wiper_arm', name: `Рычаг стеклоочистителя (${n})`, e0: [0.6, 1.55, 0] });
-      add(mesh(box(0.935, 0.952, z - len / 2 - 0.02, 0.014, 0.014, len + 0.05), M.rubber),
-        { group: 'ext', type: 'wiper_blade', name: `Щётка стеклоочистителя (${n})`, host: arm, e2: [-0.05, 0.15, 0] });
-      add(mesh(nutGeo(v3(0.985, 0.945, z), v3(0, 1, 0), 0.008), M.steel),
-        { group: 'ext', type: 'bolt_body', name: 'Гайка рычага стеклоочистителя', host: arm, e2: [0, 0.12, 0] });
-    }
-    add(mesh(merge([cyl(v3(1.0, 0.82, 0.3), v3(1.0, 0.82, 0.18), 0.04), box(0.98, 0.86, 0.1, 0.03, 0.02, 0.6)]), M.darkSteel),
-      { group: 'ext', type: 'wiper_motor', name: 'Моторедуктор стеклоочистителя', e0: [0.45, 1.25, 0] });
-  }
-
-  function emblemGeo() {
-    const ring = (r, sx, sy, oy = 0) => new THREE.TorusGeometry(r, 0.0035, 8, 40).scale(sx, sy, 0.6).translate(0, oy, 0);
-    return merge([ring(0.05, 1, 0.68), ring(0.034, 1, 0.42, 0.008), ring(0.026, 0.42, 1, -0.004)]);
-  }
 
   // ─────────────────────────── ДВИГАТЕЛЬ ───────────────────────────
   function buildEngine() {

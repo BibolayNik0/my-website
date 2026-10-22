@@ -10,7 +10,9 @@
   {
     "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+      "delaunator": "https://cdn.jsdelivr.net/npm/delaunator@5.0.1/index.js",
+      "robust-predicates": "https://cdn.jsdelivr.net/npm/robust-predicates@3.0.2/index.js"
     }
   }
   </script>
@@ -62,6 +64,7 @@
     </div>
     <div class="tool-row">
       <label class="chk"><input type="checkbox" id="xray"> Прозрачный кузов</label>
+      <label class="chk"><input type="checkbox" id="clay"> Без цвета</label>
       <label class="chk"><input type="checkbox" id="autorotate"> Вращение</label>
       <button id="btnShowAll" class="link">Вернуть снятые</button>
       <button id="btnReset" class="link">Сбросить вид</button>

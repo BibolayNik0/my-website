@@ -44,7 +44,8 @@ sun.position.set(4, 8, 3);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 20 });
-sun.shadow.bias = -0.0004;
+sun.shadow.bias = -0.0002;
+sun.shadow.normalBias = 0.025;
 scene.add(sun);
 
 const ground = new THREE.Mesh(
@@ -256,6 +257,24 @@ $('btnReset').onclick = () => flyTo(HOME.target.clone(), homePos(HOME.pos));
 
 $('xray').addEventListener('change', (e) => {
   state.xray = e.target.checked;
+  reg.parts.forEach(refresh);
+});
+// Режим «без цвета»: матовая белая «глина», стекло и рассеиватели остаются прозрачными
+const clayCache = new Map();
+function clayOf(m) {
+  if (m.transparent) return m;
+  let c = clayCache.get(m);
+  if (!c) {
+    const lum = m === M.paint ? 1 : m.color.r * 0.2126 + m.color.g * 0.7152 + m.color.b * 0.0722;
+    const tone = m === M.paint ? 0.86 : 0.3 + 0.6 * Math.sqrt(lum);
+    c = new THREE.MeshStandardMaterial({ color: new THREE.Color(tone, tone * 0.985, tone * 0.96), roughness: 0.62, metalness: 0 });
+    clayCache.set(m, c);
+  }
+  return c;
+}
+for (const p of reg.parts) for (const m of p.meshes) m.userData.origMat = m.userData.baseMat;
+$('clay').addEventListener('change', (e) => {
+  for (const p of reg.parts) for (const m of p.meshes) m.userData.baseMat = e.target.checked ? clayOf(m.userData.origMat) : m.userData.origMat;
   reg.parts.forEach(refresh);
 });
 $('autorotate').addEventListener('change', (e) => { controls.autoRotate = e.target.checked; });
