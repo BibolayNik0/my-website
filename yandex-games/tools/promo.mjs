@@ -119,8 +119,11 @@ async function shots(browser, g, dir, landscape) {
   if (g.genre === 'stack') {
     // блок проезжает ~0.8 ширины поля до идеальной позиции; тапаем в такт, чтобы на кадре была настоящая башня
     const travel = Math.min(220, vp.width * 0.6) + (vp.width - Math.min(220, vp.width * 0.6)) / 2;
+    let t0 = Date.now() - 500; // блок поехал сразу после «Играть», а мы уже ждали 500 мс
     for (let i = 0; i < 9; i++) {
-      await page.waitForTimeout(travel / ((g.p.speed || 180) + i * 4) * 1000);
+      const due = t0 + travel / ((g.p.speed || 180) + i * 4) * 1000;
+      await page.waitForTimeout(Math.max(0, due - Date.now()));
+      t0 = Date.now();
       await page.mouse.click(cx, cy);
     }
   }
