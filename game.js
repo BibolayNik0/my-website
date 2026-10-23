@@ -1581,7 +1581,7 @@
     const appraisal = ['Ничего особенного', 'Неплохой покемон', 'Хороший покемон', 'Отличный покемон!', 'Идеальный покемон! 💯'][stars];
     const sheet = $('monSheet');
     sheet.innerHTML = `
-      <div class="md-hero" style="background: radial-gradient(90% 90% at 50% 100%, ${col}, #101a33 75%)">
+      <div class="md-hero" style="background: radial-gradient(90% 90% at 50% 100%, ${col}, #a8ccff 75%)">
         <button class="close md-close" id="mdClose">✕</button>
         <div class="plat"></div>
         <img id="mdArt" src="${artUrl(s.id, m.shiny)}" alt="">
