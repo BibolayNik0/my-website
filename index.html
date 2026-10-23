@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#101a33">
+<meta name="theme-color" content="#4878d8">
 <meta name="description" content="Лови покемонов первого поколения, гуляя по своему городу">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -15,9 +15,10 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="theme-gba.css">
 </head>
 <body>
 <div id="map"></div>
@@ -25,11 +26,12 @@
 
 <div class="top">
   <button class="trainer glass" id="btnProfile2">
+    <div class="hud-ava" id="hudAva"></div>
     <div class="lvl-badge" id="lvlNum">1</div>
     <div class="info"><b id="lvlText">Тренер</b><small id="xpText">0 / 1000 XP</small><div class="xpbar"><i id="xpFill"></i></div></div>
   </button>
   <div class="chip glass" id="weatherChip"></div>
-  <div class="chip glass">🔴 <span id="ballsCount">0</span></div>
+  <button class="chip glass gem-chip" id="gemChip" title="Магазин кристаллов">💎 <span id="gemCount">0</span></button>
 </div>
 <div class="status glass" id="status">Поиск геолокации…</div>
 <div class="buffs">
@@ -39,21 +41,20 @@
 </div>
 
 <div class="side">
-  <button class="fab glass" id="btnSettings" title="Настройки">⚙️</button>
-  <button class="fab glass" id="btnCompass" title="На север"><span id="compassIcon">🧭</span></button>
-  <button class="fab glass" id="btnCenter" title="Центрировать">🎯</button>
-  <button class="fab glass" id="btnPocket" title="Карманный режим">🌙</button>
+  <button class="fab glass" id="btnSettings" title="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></button>
+  <button class="fab glass" id="btnCompass" title="На север"><span id="compassIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 8-2 6-6 2 2-6z"/></svg></span></button>
+  <button class="fab glass" id="btnCenter" title="Центрировать"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+  <button class="fab glass" id="btnPocket" title="Карманный режим"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
 </div>
 
-<div class="radar glass" id="radar"></div>
 
-<div class="navbar">
-  <button class="navbtn glass" id="btnProfile" title="Профиль и задания">📜<span class="dot" id="questDot"></span></button>
-  <button class="navbtn glass" id="btnPass" title="Боевой пропуск">🎖️<span class="dot" id="passDot"></span></button>
-  <button class="pokebtn" id="btnDex" title="Покемоны и карточки"><span class="dot" id="packDot"></span></button>
-  <button class="navbtn glass" id="btnJournal" title="Дневник прогулок">📔</button>
-  <button class="navbtn glass" id="btnBag" title="Сумка, снаряжение и магазин">🎒</button>
-</div>
+<nav class="dock glass">
+  <button class="dk" id="btnProfile" title="Профиль и задания"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg><span>Профиль</span><i class="dot" id="questDot"></i></button>
+  <button class="dk" id="btnPass" title="Боевой пропуск"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="M8.5 14 7 22l5-3 5 3-1.5-8"/><path d="m12 6 .9 1.9 2.1.3-1.5 1.4.4 2.1-1.9-1-1.9 1 .4-2.1-1.5-1.4 2.1-.3z" fill="currentColor" stroke="none"/></svg><span>Пропуск</span><i class="dot" id="passDot"></i></button>
+  <div class="dk-center"><button class="pokebtn" id="btnDex" title="Покемоны и карточки"><span class="dot" id="packDot"></span></button></div>
+  <button class="dk" id="btnBuddy" title="Напарник"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="10" r="2"/><circle cx="17.5" cy="10" r="2"/><circle cx="9.5" cy="5.5" r="2"/><circle cx="14.5" cy="5.5" r="2"/><path d="M12 12.5c-3 0-6 3.7-6 6.2 0 1.5 1.4 2.4 2.9 1.9L12 19.6l3.1 1c1.5.5 2.9-.4 2.9-1.9 0-2.5-3-6.2-6-6.2z"/></svg><span>Напарник</span><i class="dot" id="buddyDot"></i></button>
+  <button class="dk" id="btnBag" title="Сумка, снаряжение и магазин"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 10a7 7 0 0 1 14 0v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M9 6V4a3 3 0 0 1 6 0v2"/><path d="M8 14h8v4H8z"/></svg><span>Сумка</span></button>
+</nav>
 
 <!-- Collection -->
 <div class="screen sheet" id="dex"><div class="sheet-in">
@@ -95,6 +96,15 @@
 <div class="screen sheet" id="journal"><div class="sheet-in">
   <h2>Дневник прогулок <button class="close" data-close="journal">✕</button></h2>
   <div id="journalBody"></div>
+</div></div>
+
+<!-- Buddy -->
+<div class="screen buddy-view" id="buddySheet"></div>
+
+<!-- Premium store -->
+<div class="screen sheet" id="store"><div class="sheet-in">
+  <h2>Магазин <button class="close" data-close="store">✕</button></h2>
+  <div id="storeBody"></div>
 </div></div>
 
 <!-- Settings -->
@@ -139,6 +149,7 @@
       <div class="body" id="encBody"></div>
     </div>
     <div class="hint" id="encHint"></div>
+    <div class="ar-hint" id="arHint"></div>
     <div class="ball" id="ball"></div>
   </div>
   <div class="enc-bottom" id="encPicker"></div>

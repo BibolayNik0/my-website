@@ -101,12 +101,14 @@
     return { h: (h / 10 * sz).toFixed(2).replace('.', ','), w: (w / 10 * sz * sz).toFixed(1).replace('.', ',') };
   }
 
+  const newBuddyDefaults = (uid) => ({ uid, walked: 0, walkHeart: 0, food: 70, mood: 70, t: Date.now(), day: null, giftDay: '' });
+
   // ================= SAVE =================
   const SAVE_KEY = 'pokemon-go-v1';
   const DEFAULT_SETTINGS = { mapStyle: 'auto', buildings: true, tilt: true, sprites: 'anim', sound: true, music: true, vibro: true, saver: false, ar: false,
-    radius: true, radar: true, weatherFx: true };
+    radius: true, weatherFx: true };
   const defaultState = () => ({
-    xp: 0, balls: { basic: 20, great: 5, ultra: 0 }, items: { berry: 3, incense: 1, lucky: 1, pass: 0 }, candy: {},
+    xp: 0, balls: { basic: 20, great: 5, ultra: 0 }, items: { berry: 3, incense: 1, lucky: 1, pass: 0, poffin: 1 }, candy: {},
     stardust: 1000, coins: 50,
     seen: {}, caught: {}, mons: [], gone: {}, stops: {}, beaten: {}, raidsDone: {},
     totalCaught: 0, walked: 0, spins: 0, evolved: 0, shinyCaught: 0, hatched: 0, trainerWins: 0, raidWins: 0, curveballs: 0, powerups: 0,
@@ -116,12 +118,13 @@
     cards: {}, shinyCards: {}, shards: 0, packs: 1, setsClaimed: {},
     trainer: { name: '', look: '🧑', color: '#3d7dca', team: null },
     gear: { owned: { cap: true, sneakers: true }, equip: { head: 'cap', feet: 'sneakers' } }, gearShop: null,
-    pass: null, journal: {}, xlCaught: 0, xsCaught: 0,
+    pass: null, journal: {}, xlCaught: 0, xsCaught: 0, gems: 0, offersBought: {},
   });
   function migrate(p) {
     const s = Object.assign(defaultState(), p);
     s.settings = Object.assign({ ...DEFAULT_SETTINGS }, p.settings || {});
-    s.items = Object.assign({ berry: 0, incense: 0, lucky: 0, pass: 0 }, p.items || defaultState().items);
+    s.items = Object.assign({ berry: 0, incense: 0, lucky: 0, pass: 0, poffin: 0 }, p.items || defaultState().items);
+    if (s.buddy) s.buddy = Object.assign(newBuddyDefaults(s.buddy.uid), s.buddy);
     s.balls = Object.assign({ basic: 0, great: 0, ultra: 0 }, p.balls || defaultState().balls);
     s.trainer = Object.assign(defaultState().trainer, p.trainer || {});
     s.mons.forEach((m) => {
@@ -156,7 +159,7 @@
   const catchRadius = () => CATCH_RADIUS + bonus('radius');
   const stopRadius = () => STOP_RADIUS + bonus('radius');
   const dustGain = (n) => Math.round(n * (1 + pct('dust')));
-  const shinyChance = () => SHINY_CHANCE * (1 + pct('shiny'));
+  const shinyChance = () => SHINY_CHANCE * (1 + pct('shiny') + buddyPerk('shiny'));
   const bonusText = (b) => Object.keys(b).map((k) => `+${b[k]}${GEAR_STATS[k].unit} ${GEAR_STATS[k].label}`).join(', ');
 
   // ================= SPRITES =================
@@ -295,6 +298,7 @@
       else if (k === 'coins') S.coins += n;
       else if (k === 'pack') S.packs += n;
       else if (k === 'shards') S.shards += n;
+      else if (k === 'gems') S.gems += n;
       else if (k === 'gear') { if (!addGear(n)) { parts.push(`${rewardLabel(k, n)} → 🪙 ${GEAR_RARITY[GEAR_BY_ID[n].rarity].sell}`); continue; } }
       else S.items[k] = (S.items[k] || 0) + n;
       parts.push(rewardLabel(k, n));
@@ -309,7 +313,7 @@
     const before = playerLvl(); S.xp += n; const after = playerLvl();
     save(); renderHud();
     for (let l = before + 1; l <= after; l++) {
-      const parts = grant({ basic: 10, great: 5, ultra: l >= 5 ? 3 : 0, berry: 3, incense: l % 3 === 0 ? 1 : 0, pass: l % 2 === 0 ? 1 : 0, coins: 20, pack: l % 5 === 0 ? 1 : 0 });
+      const parts = grant({ basic: 10, great: 5, ultra: l >= 5 ? 3 : 0, berry: 3, incense: l % 3 === 0 ? 1 : 0, pass: l % 2 === 0 ? 1 : 0, coins: 20, pack: l % 5 === 0 ? 1 : 0, gems: l % 5 === 0 ? 20 : 0 });
       if (l % 5 === 0) addEgg(10); else if (l % 2 === 0) addEgg(5);
       if (l === 5 && !S.trainer.team) setTimeout(teamPicker, 300);
       setTimeout(() => { SFX.level(); vibrate([60, 40, 60]); }, 400);
@@ -389,11 +393,11 @@
       if (tier > had) {
         S.medals[m.id] = tier;
         let coins = 0; for (let t = had; t < tier; t++) coins += MEDAL_COINS[t];
-        S.coins += coins; S.packs += tier - had; save(); renderHud();
+        S.coins += coins; S.packs += tier - had; S.gems += 5 * (tier - had); save(); renderHud();
         setTimeout(() => {
           SFX.coin();
           popup(`<div class="big">🏅</div><h2>Медаль «${m.name}»</h2><p>${TIER_NAMES[tier - 1]}: ${m.tiers[tier - 1]} ${m.unit}</p>
-            ${rewardsHtml([rewardLabel('coins', coins), rewardLabel('pack', tier - had)])}<button class="btn" data-ok>Ура!</button>`);
+            ${rewardsHtml([rewardLabel('coins', coins), rewardLabel('pack', tier - had), rewardLabel('gems', 5 * (tier - had))])}<button class="btn" data-ok>Ура!</button>`);
         }, 800);
       }
     });
@@ -432,7 +436,8 @@
     $('lvlText').textContent = `${S.trainer.name || 'Тренер'} · ур. ${lvl}`;
     $('xpText').textContent = `${fmtNum(rest)} / ${fmtNum(need)} XP`;
     $('xpFill').style.width = (rest / need * 100) + '%';
-    $('ballsCount').textContent = S.balls.basic + S.balls.great + S.balls.ultra;
+    $('gemCount').textContent = fmtNum(S.gems);
+    if (typeof buddyBubble === 'function') { const bb = S.buddy ? buddyBubble() : ''; $('buddyDot').textContent = bb; $('buddyDot').classList.toggle('on', !!bb); }
     $('packDot').textContent = S.packs; $('packDot').classList.toggle('on', S.packs > 0);
     renderEggChip();
   }
@@ -554,11 +559,13 @@
   const avatarMarker = new maplibregl.Marker({ element: avatarEl, anchor: 'bottom' }).setLngLat([DEFAULT_POS[1], DEFAULT_POS[0]]).addTo(map);
   const buddyEl = document.createElement('div');
   buddyEl.className = 'buddy';
+  buddyEl.addEventListener('click', (e) => { e.stopPropagation(); openBuddy(); });
   const buddyMarker = new maplibregl.Marker({ element: buddyEl, anchor: 'bottom', offset: [42, -2] }).setLngLat([DEFAULT_POS[1], DEFAULT_POS[0]]).addTo(map);
   function renderBuddyMarker() {
     const m = S.buddy && S.mons.find((x) => x.uid === S.buddy.uid);
     if (!m) { buddyEl.innerHTML = ''; return; }
-    buddyEl.innerHTML = `<img src="${spriteUrl(m.sp, m.shiny)}" alt="" ${fallback(m.sp)}>`;
+    const bub = buddyBubble();
+    buddyEl.innerHTML = `${bub ? `<div class="bd-bubble">${bub}</div>` : ''}<img src="${spriteUrl(m.sp, m.shiny)}" alt="" ${fallback(m.sp)}>`;
   }
   function updateRange() {
     const lat = pos ? pos[0] : DEFAULT_POS[0];
@@ -602,11 +609,13 @@
       const m = S.mons.find((x) => x.uid === S.buddy.uid);
       if (m) {
         S.buddy.walked += d;
+        S.buddy.walkHeart = (S.buddy.walkHeart || 0) + d;
+        if (S.buddy.walkHeart >= 1000) { S.buddy.walkHeart -= 1000; const got = addHearts('walk', 1); if (got) toast(`🐾 ${SP(m.sp).name}: ❤️ +${got} за прогулку`, 1600); }
         const need = buddyKm(m) * 1000;
         if (S.buddy.walked >= need) {
           S.buddy.walked -= need;
-          const fam = family(m.sp); S.candy[fam] = (S.candy[fam] || 0) + 1;
-          toast(`<img src="${pixelUrl(m.sp, m.shiny)}" alt="">${SP(m.sp).name} нашёл конфету! 🍬`, 2200);
+          const fam = family(m.sp), n = buddyPerk('candy'); S.candy[fam] = (S.candy[fam] || 0) + n;
+          toast(`<img src="${pixelUrl(m.sp, m.shiny)}" alt="">${SP(m.sp).name} нашёл ${n > 1 ? n + ' конфеты' : 'конфету'}! 🍬`, 2200);
           SFX.coin();
         }
       } else S.buddy = null;
@@ -812,10 +821,10 @@
       if (d < 400) nearby.push({ m: v.data, d });
     });
     nearby.sort((a, b) => a.d - b.d);
-    renderRadar(nearby.slice(0, 10));
     const nearCount = nearby.filter((x) => x.d <= catchRadius()).length;
     const ci = Math.floor(pos[0] / CELL), cj = Math.floor(pos[1] / CELL), bm = BIOMES[biomeOf(ci, cj)];
     pocketCheck();
+    buddyNotice();
     $('status').textContent = `${bm.icon} ${bm.name} · ` +
       (nearCount ? `Можно поймать: ${nearCount}` : nearby.length ? 'Подойди к покемону' : 'Гуляй, чтобы найти покемонов');
     cleanup();
@@ -854,27 +863,6 @@
     if (changed) save();
   }
   setInterval(refreshWorld, 10000);
-
-  let radarSig = '';
-  function renderRadar(list) {
-    const el = $('radar');
-    el.classList.toggle('hidden', !S.settings.radar);
-    const sig = list.map((x) => x.m.id + Math.round(x.d / 10)).join('|');
-    if (sig === radarSig && el.innerHTML) return;
-    radarSig = sig;
-    el.innerHTML = '<span class="lbl">РЯДОМ</span>' + (list.length ? list.map((x) =>
-      `<button class="rad-item ${x.d <= catchRadius() ? 'near' : ''} ${x.m.shiny ? 'shiny' : ''}" data-id="${x.m.id}">
-        <img src="${pixelUrl(x.m.sp.id, x.m.shiny)}" alt="">${fmtDist(x.d)}</button>`).join('')
-      : '<span class="empty">Поблизости никого. Иди искать! 🚶</span>');
-  }
-  $('radar').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-id]'); if (!b) return;
-    const v = markers.get(b.dataset.id); if (!v) return;
-    if (dist(pos, v.data.ll) <= catchRadius()) return tryEncounter(v.data);
-    follow = false;
-    map.easeTo({ center: [v.data.ll[1], v.data.ll[0]], duration: 700 });
-    toast(`${v.data.sp.name}<br><small>${fmtDist(dist(pos, v.data.ll))} — иди туда!</small>`);
-  });
 
   // ================= POKÉSTOPS =================
   function randomGear(r, maxRarity) {
@@ -1085,7 +1073,22 @@
     ring.style.width = ring.style.height = size + 'px';
     ring.style.borderColor = RARITY[enc.mon.sp.rarity].color;
     ring.style.boxShadow = `0 0 12px ${RARITY[enc.mon.sp.rarity].color}`;
-    $('target').style.transform = `translateX(${enc.x}px)`;
+    let tx = enc.x, ty = 0;
+    if (enc.ar) {
+      // AR: the Pokémon sits in a real direction around the player
+      const ppd = innerWidth / AR_FOV, dAz = angDiff(enc.ar.az, arHeading());
+      const visible = Math.abs(dAz) < AR_FOV / 2;
+      tx = dAz * ppd + (visible ? enc.x * 0.4 : 0);
+      ty = Math.max(-innerHeight * 0.3, Math.min(innerHeight * 0.3, (arPitch() - enc.ar.el) * ppd));
+      if (visible && !enc.ar.found) {
+        enc.ar.found = true; SFX.appear(); vibrate([40, 40, 80]);
+        toast(`Нашёл! ${enc.mon.sp.name} здесь`, 1200);
+        $('encHint').textContent = 'Нашёл! Теперь смахни покебол вверх';
+      }
+      $('arHint').innerHTML = visible ? '' : `<b>${dAz < 0 ? '◀' : '▶'}</b><span>${enc.ar.found ? 'Покемон' : 'Ищи покемона'} ${dAz < 0 ? 'левее' : 'правее'} — повернись с телефоном</span>`;
+      $('arHint').className = 'ar-hint ' + (visible ? '' : dAz < 0 ? 'on left' : 'on right');
+    }
+    $('target').style.transform = `translate(${tx}px, ${ty}px)`;
     enc.ringSize = size;
     enc.raf = requestAnimationFrame(loop);
   }
@@ -1111,6 +1114,7 @@
   }
   ball.addEventListener('pointerdown', (e) => {
     if (!enc || enc.busy) return;
+    if (enc.ar && !enc.ar.found) { toast('Сначала найди покемона 👀', 1200); return; }
     ball.setPointerCapture(e.pointerId);
     drag = { x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, pts: [], angle: 0, lastA: null, curve: false };
     ball.style.transition = 'none';
@@ -1179,7 +1183,7 @@
       if (curve) { bonus *= 1.7; bxp += 20; label += ' 🌀'; S.curveballs++; quest('curve'); }
       enc.bonusXp = Math.max(enc.bonusXp || 0, bxp);
       const chance = Math.min(0.97, RARITY[enc.mon.sp.rarity].catchRate * ballDef(enc.ball).mult * bonus * (enc.berry ? 1.5 : 1)
-        * (enc.raid ? 2 : 1) * (1 + enc.fails * 0.08) * (1 + cardBonus(enc.mon.sp.type) + pct('catch')));
+        * (enc.raid ? 2 : 1) * (1 + enc.fails * 0.08) * (1 + cardBonus(enc.mon.sp.type) + pct('catch') + buddyPerk('catch')));
       const success = Math.random() < chance;
       enc.berry = false;
       toast(label, 800);
@@ -1323,7 +1327,7 @@
       const spId = isMine ? m.sp : m.sp.id;
       const st = battleStats(spId, m.lvl, m.iv);
       const hp = Math.round(st.hp * (m.hpMult || 1) * (isMine ? 1 : 1.2));
-      return { spId, sp: SP(spId), shiny: m.shiny, lvl: m.lvl, cp: isMine ? m.cp : calcCp(spId, m.lvl, m.iv), atk: st.atk, def: st.def, hp, maxHp: hp, energy: 0 };
+      return { uid: isMine ? m.uid : null, spId, sp: SP(spId), shiny: m.shiny, lvl: m.lvl, cp: isMine ? m.cp : calcCp(spId, m.lvl, m.iv), atk: st.atk, def: st.def, hp, maxHp: hp, energy: 0 };
     };
     battle = {
       kind: cfg.kind, cfg, enemy: cfg.enemy.map((m) => mk(m, false)), mine: cfg.team.map((m) => mk(m, true)),
@@ -1389,7 +1393,7 @@
     if (charged && m.energy < 50) return;
     const [fast, charge] = MOVES[m.sp.type];
     const { dmg: raw, eff } = damage(m, e, charged ? 60 : 7, m.sp.type);
-    const dmg = Math.round(raw * (1 + pct('damage')));
+    const dmg = Math.round(raw * (1 + pct('damage') + (S.buddy && m.uid === S.buddy.uid ? buddyPerk('damage') : 0)));
     if (charged) { m.energy -= 50; flash(); SFX.charge(); vibrate([30, 30, 60]); }
     else { battle.fastCd = now + 330; m.energy = Math.min(100, m.energy + 9); SFX.attack(); }
     e.hp = Math.max(0, e.hp - dmg);
@@ -1577,7 +1581,7 @@
     const appraisal = ['Ничего особенного', 'Неплохой покемон', 'Хороший покемон', 'Отличный покемон!', 'Идеальный покемон! 💯'][stars];
     const sheet = $('monSheet');
     sheet.innerHTML = `
-      <div class="md-hero" style="background: radial-gradient(90% 90% at 50% 100%, ${col}, #101a33 75%)">
+      <div class="md-hero" style="background: radial-gradient(90% 90% at 50% 100%, ${col}, #a8ccff 75%)">
         <button class="close md-close" id="mdClose">✕</button>
         <div class="plat"></div>
         <img id="mdArt" src="${artUrl(s.id, m.shiny)}" alt="">
@@ -1622,7 +1626,7 @@
       save(); SFX.tap(); openMon(uid);
     };
     $('mdBuddy').onclick = () => {
-      S.buddy = { uid, walked: 0 }; save(); renderBuddyMarker(); SFX.spin();
+      S.buddy = newBuddy(uid); save(); renderBuddyMarker(); SFX.spin();
       toast(`🐾 ${s.name} теперь твой напарник!<br><small>Конфета каждые ${buddyKm(m)} км</small>`, 2200); openMon(uid);
     };
     $('mdPower').onclick = () => {
@@ -2063,6 +2067,7 @@
   }
   function renderAvatar() {
     avatarEl.innerHTML = avatarHtml(false) + `<div class="trn-name">${esc(S.trainer.name || 'Тренер')}</div><div class="ava-shadow"></div>`;
+    $('hudAva').style.setProperty('--c', S.trainer.color); $('hudAva').textContent = S.trainer.look;
     renderHud();
   }
   function trainerSetup(first) {
@@ -2122,11 +2127,59 @@
     camStream = null;
     document.querySelectorAll('video').forEach((v) => { v.srcObject = null; });
   }
+  // ---- AR search: find where the Pokémon sits by turning around with the phone ----
+  const AR_FOV = 62;
+  const orient = { heading: null, pitch: 0, abs: false, listening: false, last: 0 };
+  const angDiff = (a, b) => ((a - b + 540) % 360) - 180;
+  function onOrient(e) {
+    let h = null;
+    if (typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading;
+    else if (e.alpha !== null && e.alpha !== undefined) {
+      if (e.type === 'deviceorientationabsolute') orient.abs = true;
+      else if (orient.abs) return; // prefer the absolute (compass) stream when the browser has it
+      h = 360 - e.alpha;
+    }
+    if (h === null) return;
+    orient.heading = orient.heading === null ? h : (orient.heading + angDiff(h, orient.heading) * 0.3 + 360) % 360;
+    if (e.beta !== null && e.beta !== undefined) orient.pitch = orient.pitch * 0.7 + (e.beta - 90) * 0.3;
+    orient.last = Date.now();
+  }
+  function listenOrientation() {
+    if (orient.listening) return;
+    orient.listening = true;
+    // must be called right inside the tap on iOS
+    try { if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') DeviceOrientationEvent.requestPermission().catch(() => {}); } catch (e) {}
+    window.addEventListener('deviceorientationabsolute', onOrient);
+    window.addEventListener('deviceorientation', onOrient);
+  }
+  const hasSensor = () => orient.heading !== null && Date.now() - orient.last < 3000;
+  const arHeading = () => hasSensor() ? orient.heading : enc.ar.look;
+  const arPitch = () => hasSensor() ? orient.pitch : 0;
+  function initArSearch() {
+    if (!enc || enc.ar) return;
+    const start = hasSensor() ? orient.heading : 0;
+    enc.ar = { az: (start + 90 + Math.random() * 180) % 360, el: -4 + Math.random() * 10, look: 0, found: false };
+    $('encHint').textContent = hasSensor() ? 'Покемон где-то рядом. Повернись с телефоном и найди его!' : 'Покемон где-то рядом. Веди пальцем по экрану, чтобы осмотреться';
+  }
+  // without a gyroscope: drag the camera view with a finger
+  let arDrag = null;
+  $('arena').addEventListener('pointerdown', (e) => { if (enc && enc.ar && !hasSensor() && !e.target.closest('#ball')) arDrag = e.clientX; });
+  $('arena').addEventListener('pointermove', (e) => {
+    if (arDrag === null || !enc || !enc.ar) return;
+    enc.ar.look = (enc.ar.look - (e.clientX - arDrag) * AR_FOV / innerWidth + 360) % 360; arDrag = e.clientX;
+  });
+  window.addEventListener('pointerup', () => { arDrag = null; });
+
   async function applyEncAr() {
     const on = S.settings.ar;
     $('encAr').classList.toggle('on', on);
-    if (!on) { $('encounter').classList.remove('ar'); if (!$('photoView').classList.contains('on')) camOff(); return; }
-    try { await camOn($('encVideo')); $('encounter').classList.add('ar'); }
+    if (!on) {
+      $('encounter').classList.remove('ar'); $('arHint').className = 'ar-hint';
+      if (enc) { enc.ar = null; }
+      if (!$('photoView').classList.contains('on')) camOff(); return;
+    }
+    listenOrientation();
+    try { await camOn($('encVideo')); $('encounter').classList.add('ar'); setTimeout(initArSearch, 400); }
     catch (e) { S.settings.ar = false; save(); $('encAr').classList.remove('on'); toast('📷 Камера недоступна<br><small>Разреши доступ к камере в настройках браузера</small>', 2200); }
   }
   $('encAr').addEventListener('click', () => { S.settings.ar = !S.settings.ar; save(); SFX.tap(); applyEncAr(); });
@@ -2234,6 +2287,271 @@
     renderWeather();
   }
 
+  // ================= BUDDY CARE (tamagotchi) =================
+  // Affection (hearts) lives on the Pokémon itself, so it is kept when you switch buddies.
+  const newBuddy = (uid) => Object.assign(newBuddyDefaults(uid), { giftDay: today() });
+  const buddyMon = () => S.buddy && S.mons.find((x) => x.uid === S.buddy.uid);
+  function affLevel(m) { const h = (m && m.aff) || 0; let l = 0; AFFECTION.forEach((a, i) => { if (h >= a.hearts) l = i; }); return l; }
+  function buddyTick() {
+    const b = S.buddy; if (!b) return;
+    const now = Date.now(), hours = (now - (b.t || now)) / 36e5;
+    b.food = Math.max(0, (b.food ?? 70) - hours * BUDDY_DECAY.food);
+    b.mood = Math.max(0, (b.mood ?? 70) - hours * BUDDY_DECAY.mood);
+    b.t = now;
+    if (!b.day || b.day.date !== today()) b.day = { date: today(), feed: 0, pet: 0, play: 0, walk: 0 };
+  }
+  const excited = () => S.buddy && S.buddy.food >= 70 && S.buddy.mood >= 70;
+  // Bonuses only work while the buddy is fed (not starving)
+  function buddyPerk(kind) {
+    const m = buddyMon(); if (!m) return 0;
+    buddyTick();
+    if (S.buddy.food < 10) return 0;
+    const l = affLevel(m);
+    if (kind === 'catch') return [0, 0, 0.05, 0.10, 0.15][l];
+    if (kind === 'damage') return [0, 0, 0, 0.10, 0.15][l];
+    if (kind === 'shiny') return l >= 4 ? 0.10 : 0;
+    if (kind === 'candy') return l >= 1 ? 2 : 1;
+    return 0;
+  }
+  function addHearts(kind, n) {
+    const m = buddyMon(); if (!m) return 0;
+    buddyTick();
+    const d = S.buddy.day;
+    if (d[kind] >= BUDDY_LIMITS[kind]) return 0;
+    d[kind]++;
+    const before = affLevel(m), gain = n * (excited() ? 2 : 1);
+    m.aff = (m.aff || 0) + gain;
+    const after = affLevel(m);
+    save();
+    if (after > before) setTimeout(() => {
+      SFX.level(); vibrate([60, 40, 120]);
+      popup(`<img class="art" src="${artUrl(m.sp, m.shiny)}" alt=""><h2>${SP(m.sp).name}: ${AFFECTION[after].name}!</h2>
+        <p>Новые бонусы привязанности:</p>${rewardsHtml(AFFECTION[after].perks)}<button class="btn" data-ok>Ура!</button>`);
+    }, 600);
+    return gain;
+  }
+  function buddyMoodText() {
+    const b = S.buddy;
+    if (b.food < 10) return '😢 Очень голоден — бонусы не работают';
+    if (b.food < 35) return '🍓 Проголодался';
+    if (b.mood < 35) return '🎾 Скучает, поиграй с ним';
+    if (excited()) return '✨ Счастлив! Сердечки ×2';
+    return '🙂 Всё хорошо';
+  }
+  function buddyBubble() {
+    const b = S.buddy, m = buddyMon(); if (!m) return '';
+    buddyTick();
+    if (affLevel(m) >= 2 && b.giftDay !== today()) return '🎁';
+    if (b.food < 35) return '🍓';
+    if (b.mood < 35) return '🎾';
+    if (excited()) return '❤️';
+    return '';
+  }
+
+  let buddyUi = null;
+  function openBuddy() {
+    const m = buddyMon();
+    if (!m) return pickBuddy();
+    buddyTick(); save();
+    const s = SP(m.sp), l = affLevel(m), h = m.aff || 0, next = AFFECTION[l + 1], b = S.buddy, d = b.day;
+    const prog = next ? (h - AFFECTION[l].hearts) / (next.hearts - AFFECTION[l].hearts) * 100 : 100;
+    const gift = l >= 2 && b.giftDay !== today();
+    const bar = (label, v, cls) => `<div class="bd-stat"><span>${label}</span><div class="bd-bar ${cls}"><i style="width:${v}%"></i></div><b>${Math.round(v)}%</b></div>`;
+    $('buddySheet').innerHTML = `
+      <div class="bd-scene" style="--tc:${TYPE_COLORS[s.type]}">
+        <button class="close bd-close" id="bdClose">✕</button>
+        <div class="bd-title"><b>${s.name}${genderIcon(m.g)}</b><small>${buddyMoodText()}</small></div>
+        <div class="bd-stage" id="bdStage">
+          <div class="bd-floor"></div>
+          <img id="bdMon" class="${spriteMode()}" src="${spriteUrl(m.sp, m.shiny)}" alt="" draggable="false" ${fallback(m.sp)}>
+          <div class="bd-play" id="bdPlay"></div>
+        </div>
+      </div>
+      <div class="bd-body">
+        <div class="bd-aff"><div><b>${'❤️'.repeat(l)}${'🤍'.repeat(4 - l)}</b><span>${AFFECTION[l].name}</span></div>
+          <small>${next ? `${h} / ${next.hearts} сердечек до «${next.name}»` : `${h} сердечек — максимум!`}</small>
+          <div class="bd-bar aff"><i style="width:${prog}%"></i></div></div>
+        ${bar('🍖 Сытость', b.food, 'food')}${bar('😊 Настроение', b.mood, 'mood')}
+        <div class="bd-actions">
+          <button class="bd-act" id="bdFeed"><b>🍓</b>Покормить<small>${d.feed}/${BUDDY_LIMITS.feed} ❤️</small></button>
+          <button class="bd-act" id="bdPet"><b>✋</b>Погладить<small>${d.pet}/${BUDDY_LIMITS.pet} ❤️</small></button>
+          <button class="bd-act" id="bdGame"><b>🎾</b>Поиграть<small>${d.play}/${BUDDY_LIMITS.play} ❤️</small></button>
+          <button class="bd-act" id="bdWalk"><b>👟</b>Гулять<small>${d.walk}/${BUDDY_LIMITS.walk} ❤️</small></button>
+          ${gift ? '<button class="bd-act gift" id="bdGift"><b>🎁</b>Подарок!<small>забрать</small></button>' : ''}
+          <button class="bd-act" id="bdPhoto"><b>📸</b>Фото<small>&nbsp;</small></button>
+        </div>
+        <p class="bd-hint" id="bdHint">Сердечки за день: корми, гладь, играй и гуляй вместе. Когда напарник сыт и весел, сердечки удваиваются.</p>
+        <h3>Бонусы привязанности</h3>
+        <div class="bd-perks">${AFFECTION.slice(1).map((a, i) => `<div class="bd-perk ${l >= i + 1 ? 'on' : ''}"><b>${'❤️'.repeat(i + 1)} ${a.name}</b><small>${a.perks.join(' · ')}</small></div>`).join('')}</div>
+        <button class="btn ghost" id="bdChange" style="width:100%;margin-top:14px">🔄 Сменить напарника</button>
+      </div>`;
+    $('buddySheet').classList.add('on');
+    sizeSprite($('bdMon'), 170, 220, 3);
+    buddyUi = { m, pet: 0 };
+    $('bdClose').onclick = closeBuddy;
+    $('bdFeed').onclick = feedMenu;
+    $('bdPet').onclick = () => { $('bdHint').textContent = '✋ Гладь покемона пальцем!'; buddyUi.petting = true; SFX.tap(); };
+    $('bdGame').onclick = playGame;
+    $('bdWalk').onclick = () => popup(`<div class="big">👟</div><h2>Гуляйте вместе</h2><p>За каждый пройденный километр напарник получает сердечко (до ${BUDDY_LIMITS.walk} в день) и иногда находит конфеты.</p><button class="btn" data-ok>Понятно</button>`);
+    $('bdPhoto').onclick = () => openPhoto({ spId: m.sp, shiny: m.shiny, cp: m.cp, g: m.g });
+    $('bdChange').onclick = pickBuddy;
+    const gb = $('bdGift'); if (gb) gb.onclick = buddyGift;
+  }
+  function closeBuddy() { $('buddySheet').classList.remove('on'); buddyUi = null; renderBuddyMarker(); }
+  function bdHeartsAt(el, n = 6, chars = ['❤️', '💕', '💖']) { const r = el.getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 3, chars, n); }
+
+  function feedMenu() {
+    const b = S.buddy;
+    popup(`<h2>Чем угостить?</h2><div class="list">${Object.keys(BUDDY_FOOD).map((k) => { const f = BUDDY_FOOD[k], n = S.items[k] || 0;
+      return `<div class="row"><div class="ic">${f.icon}</div><div class="grow"><b>${f.name} ×${n}</b><small>Сытость +${f.food}% · настроение +${f.mood}%</small></div>
+        <button class="btn sm" data-food="${k}" ${n ? '' : 'disabled'}>Дать</button></div>`; }).join('')}</div>
+      <p>${b.food >= 100 ? 'Напарник сыт, но от лакомства не откажется.' : ''}</p><button class="btn ghost" data-ok>Отмена</button>`, (box) => {
+      box.addEventListener('click', (e) => {
+        const k = e.target.dataset && e.target.dataset.food; if (!k || !S.items[k]) return;
+        const f = BUDDY_FOOD[k];
+        S.items[k]--; b.food = Math.min(100, b.food + f.food); b.mood = Math.min(100, b.mood + f.mood);
+        const got = addHearts('feed', f.hearts);
+        save(); closePopup(); SFX.berry(); vibrate(30);
+        const im = $('bdMon');
+        if (im) { im.classList.add('eat'); setTimeout(() => im.classList.remove('eat'), 700); bdHeartsAt(im, 8, [f.icon, '❤️']); }
+        toast(got ? `Ням! ❤️ +${got}` : 'Ням! (сердечки за еду на сегодня уже собраны)', 1500);
+        setTimeout(openBuddy, 800);
+      });
+    });
+  }
+  // Petting: rub the Pokémon with a finger
+  $('buddySheet').addEventListener('pointermove', (e) => {
+    if (!buddyUi || !buddyUi.petting || !e.target.closest('#bdMon') || !(e.buttons || e.pointerType === 'touch')) return;
+    const p = [e.clientX, e.clientY];
+    if (buddyUi.last) buddyUi.pet += Math.hypot(p[0] - buddyUi.last[0], p[1] - buddyUi.last[1]);
+    buddyUi.last = p;
+    if (buddyUi.pet - (buddyUi.lastHeart || 0) > 140) {
+      buddyUi.lastHeart = buddyUi.pet;
+      floatText(e.clientX, e.clientY - 20, '❤️');
+      S.buddy.mood = Math.min(100, S.buddy.mood + 4);
+      tone(880 + Math.random() * 300, 0.08, 'sine', 0.05); vibrate(10);
+    }
+    if (buddyUi.pet > 900) {
+      buddyUi.petting = false; buddyUi.pet = 0; buddyUi.lastHeart = 0;
+      const got = addHearts('pet', 1); save();
+      bdHeartsAt($('bdMon'), 10);
+      toast(got ? `${SP(buddyUi.m.sp).name} доволен! ❤️ +${got}` : `${SP(buddyUi.m.sp).name} доволен!`, 1400);
+      setTimeout(openBuddy, 900);
+    }
+  });
+  $('buddySheet').addEventListener('pointerup', () => { if (buddyUi) buddyUi.last = null; });
+
+  // Mini-game: tap the ball 8 times in 15 seconds
+  function playGame() {
+    if (!buddyUi || buddyUi.game) return;
+    const area = $('bdPlay'), im = $('bdMon');
+    const g = buddyUi.game = { hits: 0, need: 8, ends: Date.now() + 15000 };
+    $('bdHint').textContent = `🎾 Лови мячик! 0 / ${g.need}`;
+    const spawn = () => {
+      if (!buddyUi || buddyUi.game !== g) return;
+      if (Date.now() > g.ends) return finish(false);
+      area.innerHTML = `<button class="bd-ball" style="left:${10 + Math.random() * 75}%;top:${8 + Math.random() * 60}%">🎾</button>`;
+      const ball = area.querySelector('.bd-ball');
+      const t = setTimeout(spawn, 1100);
+      ball.onpointerdown = (e) => {
+        e.stopPropagation(); clearTimeout(t); g.hits++;
+        SFX.tap(); vibrate(15); floatText(e.clientX, e.clientY, '+1');
+        im.classList.add('jump'); setTimeout(() => im.classList.remove('jump'), 400);
+        $('bdHint').textContent = `🎾 Лови мячик! ${g.hits} / ${g.need}`;
+        if (g.hits >= g.need) finish(true); else spawn();
+      };
+    };
+    const finish = (win) => {
+      area.innerHTML = ''; buddyUi.game = null;
+      S.buddy.mood = Math.min(100, S.buddy.mood + (win ? 35 : 10));
+      const got = win ? addHearts('play', 2) : 0; save();
+      if (win) { SFX.catch(); bdHeartsAt(im, 12); }
+      toast(win ? `Победа! ${got ? `❤️ +${got}` : 'Настроение выросло'}` : 'Время вышло, но было весело!', 1600);
+      setTimeout(openBuddy, 900);
+    };
+    spawn();
+  }
+  function buddyGift() {
+    const m = buddyMon(); if (!m || S.buddy.giftDay === today()) return;
+    S.buddy.giftDay = today();
+    const best = affLevel(m) >= 4, r = Math.random;
+    const parts = grant({ basic: best ? 10 : 5, great: best ? 5 : 2, berry: 2, ultra: best ? 2 : 0, poffin: r() < (best ? 0.5 : 0.2) ? 1 : 0, dust: dustGain(best ? 1000 : 400) });
+    if (r() < (best ? 0.3 : 0.1) && S.eggs.length < MAX_EGGS) { addEgg(best ? 10 : 5); parts.push(`🥚 ${best ? 10 : 5} км`); }
+    SFX.spin(); bdHeartsAt($('bdMon'), 10, ['🎁', '✨']);
+    popup(`<div class="big">🎁</div><h2>${SP(m.sp).name} принёс подарок!</h2>${rewardsHtml(parts)}<button class="btn" data-ok>Спасибо!</button>`);
+    setTimeout(openBuddy, 300);
+  }
+  function pickBuddy() {
+    const list = S.mons.slice().sort((a, b) => (b.aff || 0) - (a.aff || 0) || b.cp - a.cp).slice(0, 30);
+    if (!list.length) return toast('Сначала поймай покемона!');
+    popup(`<h2>Выбери напарника</h2><p>Он будет ходить рядом, искать конфеты и становиться твоим другом.</p>
+      <div class="team-pick">${list.map((m) => `<div data-bud="${m.uid}" style="cursor:pointer"><img src="${pixelUrl(m.sp, m.shiny)}" alt="">${SP(m.sp).name}${m.aff ? `<br>❤️ ${m.aff}` : ''}</div>`).join('')}</div>
+      <button class="btn ghost" data-ok>Отмена</button>`, (box) => {
+      box.addEventListener('click', (e) => {
+        const c = e.target.closest('[data-bud]'); if (!c) return;
+        S.buddy = newBuddy(+c.dataset.bud); save(); renderBuddyMarker(); closePopup(); SFX.spin();
+        setTimeout(openBuddy, 200);
+      });
+    });
+  }
+  // Ultra friends notice rare Pokémon nearby
+  const noticed = new Set();
+  function buddyNotice() {
+    const m = buddyMon(); if (!m || affLevel(m) < 3 || !pos) return;
+    markers.forEach((v, id) => {
+      if (v.kind !== 'mon' || noticed.has(id) || !(v.data.sp.rarity >= 3 || v.data.shiny)) return;
+      const d = dist(pos, v.data.ll); if (d > 250) return;
+      noticed.add(id);
+      toast(`<img src="${pixelUrl(m.sp, m.shiny)}" alt="">${SP(m.sp).name} что-то заметил!<br><small>${v.data.shiny ? '✨ ' : ''}${v.data.sp.name} в ${fmtDist(d)}</small>`, 2600);
+      vibrate([60, 60, 60]);
+    });
+  }
+  setInterval(() => { if (S.buddy) { buddyTick(); renderBuddyMarker(); } }, 60000);
+
+  // ================= PREMIUM STORE (donations) =================
+  function renderStore() {
+    ensurePass();
+    $('storeBody').innerHTML = `
+      <div class="store-hero"><div><small>Твои кристаллы</small><b>💎 ${fmtNum(S.gems)}</b></div><span>Кристаллы дают за медали и каждые 5 уровней, а скоро их можно будет купить</span></div>
+      <h3>Кристаллы</h3>
+      <div class="gem-grid">${GEM_PACKS.map((g) => `<button class="gem-pack" data-gempack="${g.id}">${g.tag ? `<em>${g.tag}</em>` : ''}
+        <span class="gp-ic">${g.icon}</span><b>${fmtNum(g.gems)}</b>${g.bonus ? `<small>+${g.bonus} бонус</small>` : '<small>&nbsp;</small>'}<i>${g.price}</i></button>`).join('')}</div>
+      <h3>Предложения</h3>
+      <div class="list">${GEM_OFFERS.map((o) => {
+        const bought = o.once && S.offersBought[o.id], owned = o.pass && S.pass.premium;
+        const what = o.pass ? 'Открывает премиум-дорожку текущего сезона' : Object.keys(o.give).map((k) => rewardLabel(k, o.give[k])).join(' · ');
+        return `<div class="row offer"><div class="ic">${o.icon}</div><div class="grow"><b>${o.title}</b><small>${what}${o.once ? ' · только один раз' : ''}</small></div>
+          ${bought || owned ? '<span class="cnt">✓</span>' : `<button class="btn sm" data-offer="${o.id}" ${S.gems >= o.gems ? '' : 'disabled'}>💎 ${o.gems}</button>`}</div>`;
+      }).join('')}</div>
+      ${DONATE.supportUrl ? `<a class="btn blue support" href="${DONATE.supportUrl}" target="_blank" rel="noopener">💛 Поддержать автора</a>` : ''}
+      <p class="store-note">Покупки за реальные деньги включатся после подключения сервера и платёжной системы.</p>`;
+  }
+  $('storeBody').addEventListener('click', (e) => {
+    const gp = e.target.closest('[data-gempack]');
+    if (gp) {
+      const g = GEM_PACKS.find((x) => x.id === gp.dataset.gempack);
+      if (!DONATE.enabled) {
+        return popup(`<div class="big">${g.icon}</div><h2>${fmtNum(g.gems + g.bonus)} кристаллов · ${g.price}</h2>
+          <p>Оплата пока не подключена: для неё нужен сервер, который подтвердит платёж и начислит кристаллы. Скоро заработает!</p>
+          ${DONATE.supportUrl ? `<a class="btn blue" href="${DONATE.supportUrl}" target="_blank" rel="noopener">💛 Поддержать автора</a> ` : ''}<button class="btn ghost" data-ok>Понятно</button>`);
+      }
+      return;
+    }
+    const of = e.target.closest('[data-offer]');
+    if (of) {
+      const o = GEM_OFFERS.find((x) => x.id === of.dataset.offer);
+      if (S.gems < o.gems || (o.once && S.offersBought[o.id])) return;
+      if (o.pass) { ensurePass(); if (S.pass.premium) return; S.pass.premium = true; renderPassDot(); }
+      S.gems -= o.gems;
+      if (o.once) S.offersBought[o.id] = true;
+      const parts = o.give ? grant(o.give) : ['⭐ Премиум-пропуск'];
+      save(); renderHud(); SFX.coin();
+      const r = of.getBoundingClientRect(); burst(r.left + r.width / 2, r.top, ['💎', '✨'], 10);
+      popup(`<div class="big">${o.icon}</div><h2>${o.title}</h2>${rewardsHtml(parts)}<button class="btn" data-ok>Отлично!</button>`);
+      renderStore();
+    }
+  });
+
   // ================= BAG: items, eggs, shop =================
   let bagTab = 'items';
   function renderBag() {
@@ -2264,7 +2582,8 @@
           : '<div class="empty-note">Яиц нет. Крути покестопы! 🎁</div>') +
         (S.buddy ? (() => { const m = S.mons.find((x) => x.uid === S.buddy.uid); return m ? `<h3>Напарник</h3><div class="row"><img src="${pixelUrl(m.sp, m.shiny)}" alt="" style="width:56px;height:56px;image-rendering:pixelated"><div class="grow"><b>${SP(m.sp).name} 🐾</b><small>Конфета каждые ${buddyKm(m)} км</small><div class="egg-prog"><i style="width:${S.buddy.walked / (buddyKm(m) * 1000) * 100}%"></i></div></div></div>` : ''; })() : '');
     } else {
-      $('bagBody').innerHTML = `<div class="wallet"><div>🪙 ${fmtNum(S.coins)}<small>монеты: за медали, бонусы дня и бои</small></div></div><div class="shop">` +
+      $('bagBody').innerHTML = `<button class="store-banner" id="toStore"><b>💎 Магазин кристаллов</b><small>Наборы, премиум-пропуск и поддержка игры</small><span>${fmtNum(S.gems)} 💎</span></button>
+        <div class="wallet"><div>🪙 ${fmtNum(S.coins)}<small>монеты: за медали, бонусы дня и бои</small></div></div><div class="shop">` +
         SHOP.map((it) => `<div class="shop-item"><div class="ic">${it.icon}</div><b>${it.title}</b><button class="btn sm" data-buy="${it.id}" ${S.coins >= it.price ? '' : 'disabled'}>🪙 ${it.price}</button></div>`).join('') + '</div>' +
         `<h3>🧢 Снаряжение дня <small style="color:var(--muted);font-weight:700">· обновляется каждый день</small></h3><div class="list">${gearShopOffers().map((g) => gearRow(g,
           S.gear.owned[g.id] ? '<span class="cnt">✓</span>' : `<button class="btn sm" data-buygear="${g.id}" ${S.coins >= GEAR_RARITY[g.rarity].price ? '' : 'disabled'}>🪙 ${GEAR_RARITY[g.rarity].price}</button>`)).join('')}</div>`;
@@ -2272,6 +2591,7 @@
   }
   $('bagTabs').addEventListener('click', (e) => { if (e.target.dataset.tab) { bagTab = e.target.dataset.tab; SFX.tap(); renderBag(); } });
   $('bagBody').addEventListener('click', (e) => {
+    if (e.target.closest('#toStore')) { $('bag').classList.remove('on'); return openSheet('store', renderStore); }
     const gb = e.target.closest('[data-buygear]');
     if (gb) {
       const g = GEAR_BY_ID[gb.dataset.buygear], price = GEAR_RARITY[g.rarity].price;
@@ -2325,6 +2645,7 @@
           <small>${team ? `${team.icon} Команда ${team.name} · ${team.desc}` : lvl >= 5 ? 'Выбери команду!' : 'Команда откроется на 5 уровне'}</small>
           <div class="actions" style="justify-content:flex-start;margin-top:8px">
             <button class="btn sm ghost" id="editTrainer">✏️ Внешность</button>
+            <button class="btn sm ghost" id="openJournal">📔 Дневник</button>
             ${lvl >= 5 ? `<button class="btn sm ${team ? 'ghost' : ''}" id="pickTeam">${team ? '🔄 Сменить команду' : '🛡️ Выбрать команду'}</button>` : ''}
           </div></div>
       </div>
@@ -2343,6 +2664,7 @@
   }
   $('profileBody').addEventListener('click', (e) => {
     if (e.target.id === 'editTrainer') return trainerSetup(false);
+    if (e.target.id === 'openJournal') { $('profile').classList.remove('on'); return openSheet('journal', renderJournal); }
     if (e.target.id === 'pickTeam') return teamPicker();
     const b = e.target.closest('[data-claim]'); if (!b) return;
     const q = S.quests.list[+b.dataset.claim]; if (q.claimed) return;
@@ -2371,7 +2693,6 @@
       sw('tilt', 'Наклон камеры', '3D-вид сверху под углом') +
       sw('weatherFx', 'Эффекты погоды', 'Дождь, снег, туман и ветер на экране') +
       sw('radius', 'Радиус ловли', 'Синий круг вокруг тебя') +
-      sw('radar', 'Радар «Рядом»', 'Список ближайших покемонов') +
       '<h3>Игра</h3>' +
       seg('sprites', 'Покемоны', [['anim', 'Анимированные'], ['pixel', 'Пиксельные']]) +
       sw('music', 'Музыка') +
@@ -2424,7 +2745,6 @@
     if (k === 'buildings') applyBuildings();
     if (k === 'tilt') map.easeTo({ pitch: S.settings.tilt ? PITCH : 0, duration: 600 });
     if (k === 'radius') updateRange();
-    if (k === 'radar') { radarSig = ''; refreshWorld(); }
     if (k === 'sprites') rebuildMarkers();
     if (k === 'weatherFx') renderWeather();
     if (k === 'music') { if (S.settings.music) { audio(); playMusic(battle ? 'battle' : 'map'); } else stopMusicTimer(); }
@@ -2437,7 +2757,7 @@
   const TUTORIAL = [
     ['👋', 'Привет, тренер!', 'Это игра про покемонов в твоём городе. Гуляй по-настоящему — и они будут появляться рядом с тобой на карте.'],
     ['🎯', 'Ловля', 'Подойди к покемону ближе 70 м (синий круг) и нажми на него. Смахни покебол вверх. Бросай, когда цветное кольцо маленькое — шанс выше!<br><br>🌀 Покрути покебол пальцем по кругу перед броском — получится кручёный бросок.'],
-    ['🎁', 'Покестопы, яйца и напарник', 'Покестопы — столбики с крутящимся диском, они стоят у настоящих мест твоего города. Открой покестоп и раскрути диск пальцем: выпадут покеболы, ягоды и яйца. Яйца вылупляются, пока ты гуляешь. Выбери покемона-напарника — он будет ходить рядом и находить конфеты.'],
+    ['🎁', 'Покестопы, яйца и напарник', 'Покестопы — столбики с крутящимся диском, они стоят у настоящих мест твоего города. Открой покестоп и раскрути диск пальцем: выпадут покеболы, ягоды и яйца. Яйца вылупляются, пока ты гуляешь. Выбери покемона-напарника — он будет ходить рядом и находить конфеты. Корми его, гладь и играй с ним: чем крепче дружба, тем больше бонусов.'],
     ['⚔️', 'Бои и рейды', 'Красные значки VS — тренеры, с ними можно сразиться. Покестопы с боссом — рейды: победи его командой и поймай! В бою тапай по экрану, а когда враг светится красным — жми «Уклон».'],
     ['🌦️', 'Погода и местность', 'Погода настоящая: в дождь больше водных, в солнце — огненных и травяных. У воды живут водные покемоны, в парках — травяные и жуки, в городе — электрические и боевые.'],
     ['🧬', 'Развитие', 'За поимки дают конфеты и звёздную пыль. С ними покемонов можно усиливать и эволюционировать. Выполняй задания дня, собирай медали и заходи каждый день за бонусом!'],
@@ -2463,7 +2783,8 @@
   $('btnProfile2').addEventListener('click', () => openSheet('profile', renderProfile));
   $('btnSettings').addEventListener('click', () => openSheet('settings', renderSettings));
   $('btnPass').addEventListener('click', () => openSheet('passSheet', renderPass));
-  $('btnJournal').addEventListener('click', () => openSheet('journal', renderJournal));
+  $('btnBuddy').addEventListener('click', () => { SFX.tap(); openBuddy(); });
+  $('gemChip').addEventListener('click', () => openSheet('store', renderStore));
   $('eggChip').addEventListener('click', () => { bagTab = 'eggs'; openSheet('bag', renderBag); });
   document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => { SFX.tap(); $(b.dataset.close).classList.remove('on'); }));
   $('btnCenter').addEventListener('click', () => {

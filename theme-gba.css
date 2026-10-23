@@ -1,0 +1,169 @@
+/* ===================== Pixel theme «GBA Изумруд» =====================
+   Bright blue/white menus with rounded pixel corners, inspired by GBA-era handheld RPGs.
+   Panels are drawn with 9-slice pixel frames (border-image on a ::before layer), so they
+   never change the layout of the element they decorate. Frame images are generated SVGs. */
+:root { --fw: 15px; --fs: 5; --f-panel: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 11 11' shape-rendering='crispEdges'%3E%3Cpath fill='%233858a8' d='M0 4h1v1h-1zM0 5h1v1h-1zM0 6h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM1 7h1v1h-1zM1 8h1v1h-1zM2 1h1v1h-1zM2 9h1v1h-1zM3 1h1v1h-1zM3 9h1v1h-1zM4 0h1v1h-1zM4 10h1v1h-1zM5 0h1v1h-1zM5 10h1v1h-1zM6 0h1v1h-1zM6 10h1v1h-1zM7 1h1v1h-1zM7 9h1v1h-1zM8 1h1v1h-1zM8 9h1v1h-1zM9 2h1v1h-1zM9 3h1v1h-1zM9 7h1v1h-1zM9 8h1v1h-1zM10 4h1v1h-1zM10 5h1v1h-1zM10 6h1v1h-1z'/%3E%3Cpath fill='%23c8d8ff' d='M1 4h1v1h-1zM1 5h1v1h-1zM1 6h1v1h-1zM2 2h1v1h-1zM2 3h1v1h-1zM2 7h1v1h-1zM2 8h1v1h-1zM3 2h1v1h-1zM3 8h1v1h-1zM4 1h1v1h-1zM4 9h1v1h-1zM5 1h1v1h-1zM5 9h1v1h-1zM6 1h1v1h-1zM6 9h1v1h-1zM7 2h1v1h-1zM7 8h1v1h-1zM8 2h1v1h-1zM8 3h1v1h-1zM8 7h1v1h-1zM8 8h1v1h-1zM9 4h1v1h-1zM9 5h1v1h-1zM9 6h1v1h-1z'/%3E%3Cpath fill='%23f8fbff' d='M2 4h1v1h-1zM2 5h1v1h-1zM2 6h1v1h-1zM3 3h1v1h-1zM3 4h1v1h-1zM3 5h1v1h-1zM3 6h1v1h-1zM3 7h1v1h-1zM4 2h1v1h-1zM4 3h1v1h-1zM4 4h1v1h-1zM4 5h1v1h-1zM4 6h1v1h-1zM4 7h1v1h-1zM4 8h1v1h-1zM5 2h1v1h-1zM5 3h1v1h-1zM5 4h1v1h-1zM5 5h1v1h-1zM5 6h1v1h-1zM5 7h1v1h-1zM5 8h1v1h-1zM6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM6 6h1v1h-1zM6 7h1v1h-1zM6 8h1v1h-1zM7 3h1v1h-1zM7 4h1v1h-1zM7 5h1v1h-1zM7 6h1v1h-1zM7 7h1v1h-1zM8 4h1v1h-1zM8 5h1v1h-1zM8 6h1v1h-1z'/%3E%3C/svg%3E"); --f-hud: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 11 11' shape-rendering='crispEdges'%3E%3Cpath fill='%233858a8' d='M0 4h1v1h-1zM0 5h1v1h-1zM0 6h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM1 7h1v1h-1zM1 8h1v1h-1zM2 1h1v1h-1zM2 9h1v1h-1zM3 1h1v1h-1zM3 9h1v1h-1zM4 0h1v1h-1zM4 10h1v1h-1zM5 0h1v1h-1zM5 10h1v1h-1zM6 0h1v1h-1zM6 10h1v1h-1zM7 1h1v1h-1zM7 9h1v1h-1zM8 1h1v1h-1zM8 9h1v1h-1zM9 2h1v1h-1zM9 3h1v1h-1zM9 7h1v1h-1zM9 8h1v1h-1zM10 4h1v1h-1zM10 5h1v1h-1zM10 6h1v1h-1z'/%3E%3Cpath fill='%239db8f0' d='M1 4h1v1h-1zM1 5h1v1h-1zM1 6h1v1h-1zM2 2h1v1h-1zM2 3h1v1h-1zM2 7h1v1h-1zM2 8h1v1h-1zM3 2h1v1h-1zM3 8h1v1h-1zM4 1h1v1h-1zM4 9h1v1h-1zM5 1h1v1h-1zM5 9h1v1h-1zM6 1h1v1h-1zM6 9h1v1h-1zM7 2h1v1h-1zM7 8h1v1h-1zM8 2h1v1h-1zM8 3h1v1h-1zM8 7h1v1h-1zM8 8h1v1h-1zM9 4h1v1h-1zM9 5h1v1h-1zM9 6h1v1h-1z'/%3E%3Cpath fill='%23ffffff' d='M2 4h1v1h-1zM2 5h1v1h-1zM2 6h1v1h-1zM3 3h1v1h-1zM3 4h1v1h-1zM3 5h1v1h-1zM3 6h1v1h-1zM3 7h1v1h-1zM4 2h1v1h-1zM4 3h1v1h-1zM4 4h1v1h-1zM4 5h1v1h-1zM4 6h1v1h-1zM4 7h1v1h-1zM4 8h1v1h-1zM5 2h1v1h-1zM5 3h1v1h-1zM5 4h1v1h-1zM5 5h1v1h-1zM5 6h1v1h-1zM5 7h1v1h-1zM5 8h1v1h-1zM6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM6 6h1v1h-1zM6 7h1v1h-1zM6 8h1v1h-1zM7 3h1v1h-1zM7 4h1v1h-1zM7 5h1v1h-1zM7 6h1v1h-1zM7 7h1v1h-1zM8 4h1v1h-1zM8 5h1v1h-1zM8 6h1v1h-1z'/%3E%3C/svg%3E"); --f-card: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 11 11' shape-rendering='crispEdges'%3E%3Cpath fill='%238aa6e6' d='M0 4h1v1h-1zM0 5h1v1h-1zM0 6h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM1 7h1v1h-1zM1 8h1v1h-1zM2 1h1v1h-1zM2 9h1v1h-1zM3 1h1v1h-1zM3 9h1v1h-1zM4 0h1v1h-1zM4 10h1v1h-1zM5 0h1v1h-1zM5 10h1v1h-1zM6 0h1v1h-1zM6 10h1v1h-1zM7 1h1v1h-1zM7 9h1v1h-1zM8 1h1v1h-1zM8 9h1v1h-1zM9 2h1v1h-1zM9 3h1v1h-1zM9 7h1v1h-1zM9 8h1v1h-1zM10 4h1v1h-1zM10 5h1v1h-1zM10 6h1v1h-1z'/%3E%3Cpath fill='%23eef3ff' d='M1 4h1v1h-1zM1 5h1v1h-1zM1 6h1v1h-1zM2 2h1v1h-1zM2 3h1v1h-1zM2 7h1v1h-1zM2 8h1v1h-1zM3 2h1v1h-1zM3 8h1v1h-1zM4 1h1v1h-1zM4 9h1v1h-1zM5 1h1v1h-1zM5 9h1v1h-1zM6 1h1v1h-1zM6 9h1v1h-1zM7 2h1v1h-1zM7 8h1v1h-1zM8 2h1v1h-1zM8 3h1v1h-1zM8 7h1v1h-1zM8 8h1v1h-1zM9 4h1v1h-1zM9 5h1v1h-1zM9 6h1v1h-1z'/%3E%3Cpath fill='%23ffffff' d='M2 4h1v1h-1zM2 5h1v1h-1zM2 6h1v1h-1zM3 3h1v1h-1zM3 4h1v1h-1zM3 5h1v1h-1zM3 6h1v1h-1zM3 7h1v1h-1zM4 2h1v1h-1zM4 3h1v1h-1zM4 4h1v1h-1zM4 5h1v1h-1zM4 6h1v1h-1zM4 7h1v1h-1zM4 8h1v1h-1zM5 2h1v1h-1zM5 3h1v1h-1zM5 4h1v1h-1zM5 5h1v1h-1zM5 6h1v1h-1zM5 7h1v1h-1zM5 8h1v1h-1zM6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM6 6h1v1h-1zM6 7h1v1h-1zM6 8h1v1h-1zM7 3h1v1h-1zM7 4h1v1h-1zM7 5h1v1h-1zM7 6h1v1h-1zM7 7h1v1h-1zM8 4h1v1h-1zM8 5h1v1h-1zM8 6h1v1h-1z'/%3E%3C/svg%3E"); --f-orange: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 11 11' shape-rendering='crispEdges'%3E%3Cpath fill='%23a06010' d='M0 4h1v1h-1zM0 5h1v1h-1zM0 6h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM1 7h1v1h-1zM1 8h1v1h-1zM2 1h1v1h-1zM2 9h1v1h-1zM3 1h1v1h-1zM3 9h1v1h-1zM4 0h1v1h-1zM4 10h1v1h-1zM5 0h1v1h-1zM5 10h1v1h-1zM6 0h1v1h-1zM6 10h1v1h-1zM7 1h1v1h-1zM7 9h1v1h-1zM8 1h1v1h-1zM8 9h1v1h-1zM9 2h1v1h-1zM9 3h1v1h-1zM9 7h1v1h-1zM9 8h1v1h-1zM10 4h1v1h-1zM10 5h1v1h-1zM10 6h1v1h-1z'/%3E%3Cpath fill='%23ffe090' d='M1 4h1v1h-1zM2 2h1v1h-1zM2 3h1v1h-1zM3 2h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM8 3h1v1h-1zM9 4h1v1h-1z'/%3E%3Cpath fill='%23ffc860' d='M1 5h1v1h-1zM1 6h1v1h-1zM2 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 9h1v1h-1zM5 9h1v1h-1zM6 9h1v1h-1zM7 8h1v1h-1zM8 7h1v1h-1zM8 8h1v1h-1zM9 5h1v1h-1zM9 6h1v1h-1z'/%3E%3Cpath fill='%23f8a830' d='M2 4h1v1h-1zM2 5h1v1h-1zM2 6h1v1h-1zM3 3h1v1h-1zM3 4h1v1h-1zM3 5h1v1h-1zM3 6h1v1h-1zM3 7h1v1h-1zM4 2h1v1h-1zM4 3h1v1h-1zM4 4h1v1h-1zM4 5h1v1h-1zM4 6h1v1h-1zM4 7h1v1h-1zM4 8h1v1h-1zM5 2h1v1h-1zM5 3h1v1h-1zM5 4h1v1h-1zM5 5h1v1h-1zM5 6h1v1h-1zM5 7h1v1h-1zM5 8h1v1h-1zM6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM6 6h1v1h-1zM6 7h1v1h-1zM6 8h1v1h-1zM7 3h1v1h-1zM7 4h1v1h-1zM7 5h1v1h-1zM7 6h1v1h-1zM7 7h1v1h-1zM8 4h1v1h-1zM8 5h1v1h-1zM8 6h1v1h-1z'/%3E%3C/svg%3E"); --f-blue: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 11 11' shape-rendering='crispEdges'%3E%3Cpath fill='%2328489e' d='M0 4h1v1h-1zM0 5h1v1h-1zM0 6h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM1 7h1v1h-1zM1 8h1v1h-1zM2 1h1v1h-1zM2 9h1v1h-1zM3 1h1v1h-1zM3 9h1v1h-1zM4 0h1v1h-1zM4 10h1v1h-1zM5 0h1v1h-1zM5 10h1v1h-1zM6 0h1v1h-1zM6 10h1v1h-1zM7 1h1v1h-1zM7 9h1v1h-1zM8 1h1v1h-1zM8 9h1v1h-1zM9 2h1v1h-1zM9 3h1v1h-1zM9 7h1v1h-1zM9 8h1v1h-1zM10 4h1v1h-1zM10 5h1v1h-1zM10 6h1v1h-1z'/%3E%3Cpath fill='%239cc0ff' d='M1 4h1v1h-1zM2 2h1v1h-1zM2 3h1v1h-1zM3 2h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM8 3h1v1h-1zM9 4h1v1h-1z'/%3E%3Cpath fill='%236c98f0' d='M1 5h1v1h-1zM1 6h1v1h-1zM2 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 9h1v1h-1zM5 9h1v1h-1zM6 9h1v1h-1zM7 8h1v1h-1zM8 7h1v1h-1zM8 8h1v1h-1zM9 5h1v1h-1zM9 6h1v1h-1z'/%3E%3Cpath fill='%234878d8' d='M2 4h1v1h-1zM2 5h1v1h-1zM2 6h1v1h-1zM3 3h1v1h-1zM3 4h1v1h-1zM3 5h1v1h-1zM3 6h1v1h-1zM3 7h1v1h-1zM4 2h1v1h-1zM4 3h1v1h-1zM4 4h1v1h-1zM4 5h1v1h-1zM4 6h1v1h-1zM4 7h1v1h-1zM4 8h1v1h-1zM5 2h1v1h-1zM5 3h1v1h-1zM5 4h1v1h-1zM5 5h1v1h-1zM5 6h1v1h-1zM5 7h1v1h-1zM5 8h1v1h-1zM6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM6 6h1v1h-1zM6 7h1v1h-1zM6 8h1v1h-1zM7 3h1v1h-1zM7 4h1v1h-1zM7 5h1v1h-1zM7 6h1v1h-1zM7 7h1v1h-1zM8 4h1v1h-1zM8 5h1v1h-1zM8 6h1v1h-1z'/%3E%3C/svg%3E"); --f-red: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 11 11' shape-rendering='crispEdges'%3E%3Cpath fill='%23a02020' d='M0 4h1v1h-1zM0 5h1v1h-1zM0 6h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM1 7h1v1h-1zM1 8h1v1h-1zM2 1h1v1h-1zM2 9h1v1h-1zM3 1h1v1h-1zM3 9h1v1h-1zM4 0h1v1h-1zM4 10h1v1h-1zM5 0h1v1h-1zM5 10h1v1h-1zM6 0h1v1h-1zM6 10h1v1h-1zM7 1h1v1h-1zM7 9h1v1h-1zM8 1h1v1h-1zM8 9h1v1h-1zM9 2h1v1h-1zM9 3h1v1h-1zM9 7h1v1h-1zM9 8h1v1h-1zM10 4h1v1h-1zM10 5h1v1h-1zM10 6h1v1h-1z'/%3E%3Cpath fill='%23ffa0a0' d='M1 4h1v1h-1zM2 2h1v1h-1zM2 3h1v1h-1zM3 2h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM8 3h1v1h-1zM9 4h1v1h-1z'/%3E%3Cpath fill='%23ff7070' d='M1 5h1v1h-1zM1 6h1v1h-1zM2 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 9h1v1h-1zM5 9h1v1h-1zM6 9h1v1h-1zM7 8h1v1h-1zM8 7h1v1h-1zM8 8h1v1h-1zM9 5h1v1h-1zM9 6h1v1h-1z'/%3E%3Cpath fill='%23e84848' d='M2 4h1v1h-1zM2 5h1v1h-1zM2 6h1v1h-1zM3 3h1v1h-1zM3 4h1v1h-1zM3 5h1v1h-1zM3 6h1v1h-1zM3 7h1v1h-1zM4 2h1v1h-1zM4 3h1v1h-1zM4 4h1v1h-1zM4 5h1v1h-1zM4 6h1v1h-1zM4 7h1v1h-1zM4 8h1v1h-1zM5 2h1v1h-1zM5 3h1v1h-1zM5 4h1v1h-1zM5 5h1v1h-1zM5 6h1v1h-1zM5 7h1v1h-1zM5 8h1v1h-1zM6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM6 6h1v1h-1zM6 7h1v1h-1zM6 8h1v1h-1zM7 3h1v1h-1zM7 4h1v1h-1zM7 5h1v1h-1zM7 6h1v1h-1zM7 7h1v1h-1zM8 4h1v1h-1zM8 5h1v1h-1zM8 6h1v1h-1z'/%3E%3C/svg%3E"); --f-green: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 11 11' shape-rendering='crispEdges'%3E%3Cpath fill='%23307828' d='M0 4h1v1h-1zM0 5h1v1h-1zM0 6h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM1 7h1v1h-1zM1 8h1v1h-1zM2 1h1v1h-1zM2 9h1v1h-1zM3 1h1v1h-1zM3 9h1v1h-1zM4 0h1v1h-1zM4 10h1v1h-1zM5 0h1v1h-1zM5 10h1v1h-1zM6 0h1v1h-1zM6 10h1v1h-1zM7 1h1v1h-1zM7 9h1v1h-1zM8 1h1v1h-1zM8 9h1v1h-1zM9 2h1v1h-1zM9 3h1v1h-1zM9 7h1v1h-1zM9 8h1v1h-1zM10 4h1v1h-1zM10 5h1v1h-1zM10 6h1v1h-1z'/%3E%3Cpath fill='%23a8f098' d='M1 4h1v1h-1zM2 2h1v1h-1zM2 3h1v1h-1zM3 2h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM8 3h1v1h-1zM9 4h1v1h-1z'/%3E%3Cpath fill='%2378d868' d='M1 5h1v1h-1zM1 6h1v1h-1zM2 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 9h1v1h-1zM5 9h1v1h-1zM6 9h1v1h-1zM7 8h1v1h-1zM8 7h1v1h-1zM8 8h1v1h-1zM9 5h1v1h-1zM9 6h1v1h-1z'/%3E%3Cpath fill='%2358c048' d='M2 4h1v1h-1zM2 5h1v1h-1zM2 6h1v1h-1zM3 3h1v1h-1zM3 4h1v1h-1zM3 5h1v1h-1zM3 6h1v1h-1zM3 7h1v1h-1zM4 2h1v1h-1zM4 3h1v1h-1zM4 4h1v1h-1zM4 5h1v1h-1zM4 6h1v1h-1zM4 7h1v1h-1zM4 8h1v1h-1zM5 2h1v1h-1zM5 3h1v1h-1zM5 4h1v1h-1zM5 5h1v1h-1zM5 6h1v1h-1zM5 7h1v1h-1zM5 8h1v1h-1zM6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM6 6h1v1h-1zM6 7h1v1h-1zM6 8h1v1h-1zM7 3h1v1h-1zM7 4h1v1h-1zM7 5h1v1h-1zM7 6h1v1h-1zM7 7h1v1h-1zM8 4h1v1h-1zM8 5h1v1h-1zM8 6h1v1h-1z'/%3E%3C/svg%3E"); --f-pink: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 11 11' shape-rendering='crispEdges'%3E%3Cpath fill='%23e070a0' d='M0 4h1v1h-1zM0 5h1v1h-1zM0 6h1v1h-1zM1 2h1v1h-1zM1 3h1v1h-1zM1 7h1v1h-1zM1 8h1v1h-1zM2 1h1v1h-1zM2 9h1v1h-1zM3 1h1v1h-1zM3 9h1v1h-1zM4 0h1v1h-1zM4 10h1v1h-1zM5 0h1v1h-1zM5 10h1v1h-1zM6 0h1v1h-1zM6 10h1v1h-1zM7 1h1v1h-1zM7 9h1v1h-1zM8 1h1v1h-1zM8 9h1v1h-1zM9 2h1v1h-1zM9 3h1v1h-1zM9 7h1v1h-1zM9 8h1v1h-1zM10 4h1v1h-1zM10 5h1v1h-1zM10 6h1v1h-1z'/%3E%3Cpath fill='%23ffd8e8' d='M1 4h1v1h-1zM1 5h1v1h-1zM1 6h1v1h-1zM2 2h1v1h-1zM2 3h1v1h-1zM2 7h1v1h-1zM2 8h1v1h-1zM3 2h1v1h-1zM3 8h1v1h-1zM4 1h1v1h-1zM4 9h1v1h-1zM5 1h1v1h-1zM5 9h1v1h-1zM6 1h1v1h-1zM6 9h1v1h-1zM7 2h1v1h-1zM7 8h1v1h-1zM8 2h1v1h-1zM8 3h1v1h-1zM8 7h1v1h-1zM8 8h1v1h-1zM9 4h1v1h-1zM9 5h1v1h-1zM9 6h1v1h-1z'/%3E%3Cpath fill='%23fff0f6' d='M2 4h1v1h-1zM2 5h1v1h-1zM2 6h1v1h-1zM3 3h1v1h-1zM3 4h1v1h-1zM3 5h1v1h-1zM3 6h1v1h-1zM3 7h1v1h-1zM4 2h1v1h-1zM4 3h1v1h-1zM4 4h1v1h-1zM4 5h1v1h-1zM4 6h1v1h-1zM4 7h1v1h-1zM4 8h1v1h-1zM5 2h1v1h-1zM5 3h1v1h-1zM5 4h1v1h-1zM5 5h1v1h-1zM5 6h1v1h-1zM5 7h1v1h-1zM5 8h1v1h-1zM6 2h1v1h-1zM6 3h1v1h-1zM6 4h1v1h-1zM6 5h1v1h-1zM6 6h1v1h-1zM6 7h1v1h-1zM6 8h1v1h-1zM7 3h1v1h-1zM7 4h1v1h-1zM7 5h1v1h-1zM7 6h1v1h-1zM7 7h1v1h-1zM8 4h1v1h-1zM8 5h1v1h-1zM8 6h1v1h-1z'/%3E%3C/svg%3E"); }
+
+:root {
+  --bg: #e8f0ff; --bg2: #f8fbff; --text: #283048; --muted: #5868a0; --line: rgba(56,88,168,.22);
+  --accent: #f8a830; --blue: #4878d8; --display: 'Pixelify Sans', monospace;
+}
+html, body { font-family: 'Pixelify Sans', monospace; font-weight: 500; letter-spacing: .01em; -webkit-font-smoothing: none; }
+b, strong, h2, h3, .stats b, .wallet div, .pass-lvl b, .md-cp b, .md-name, .bd-title b, .bd-aff span, .store-hero b, .gem-pack b,
+.trainer .info b, .popup h2, .sv-name, .pass-title, .pk-big, .tcg-head b { font-family: 'Pixelify Sans', monospace !important; font-weight: 700 !important; letter-spacing: .02em !important; }
+img, .spr, #bdMon { image-rendering: pixelated; }
+
+/* ---------- Pixel frame engine ---------- */
+:where(.chip, .fab, .trainer, .enc-name, .close, .pick, .b-title, .popup .box, .bd-body, .stats div, .row, .quest, .medal, .set-row, .wallet div,
+  .md-grid div, .card, .bd-act, .bd-perk, .shop-item, .gem-pack, .tabs, .seg, .pt-cell, .gslot, .route-box, .tr-name, .toolbar input,
+  .toolbar select, .btn, .tabs button, .seg button, .store-hero, .store-banner, .trainer-card, .pass-hero, .gear-hero, .sheet h2, .gem-pack i,
+  .team-pick > div, .team-btn, .sv-item, .rewards span, .streak div, .bonus-sum span) { position: relative; }
+.chip, .fab, .status, .dock, .trainer, .toast, .enc-name, .close, .pick, .b-panel, .b-title, .ar-hint span,
+.popup .box, .sheet > .sheet-in, .bd-body,
+.stats div, .row, .quest, .medal, .set-row, .wallet div, .md-grid div, .card, .bd-act, .bd-perk, .shop-item, .gem-pack, .tabs, .seg, .pt-cell, .gslot,
+.route-box, .tr-name, .toolbar input, .toolbar select, .btn, .tabs button.on, .seg button.on, .store-hero, .store-banner, .trainer-card, .pass-hero,
+.gear-hero, .sheet h2, .gem-pack i, .team-pick > div, .team-btn, .sv-item, .popup .rewards span, .streak div, .bonus-sum span {
+  isolation: isolate; background: none !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important; --frame: var(--f-card);
+}
+.chip::before, .fab::before, .status::before, .dock::before, .trainer::before, .toast::before, .enc-name::before, .close::before, .pick::before,
+.b-panel::before, .b-title::before, .ar-hint span::before, .popup .box::before, .sheet > .sheet-in::before, .bd-body::before,
+.stats div::before, .row::before, .quest::before, .medal::before, .set-row::before, .wallet div::before, .md-grid div::before, .card::before,
+.bd-act::before, .bd-perk::before, .shop-item::before, .gem-pack::before, .tabs::before, .seg::before, .pt-cell::before, .gslot::before,
+.route-box::before, .tr-name::before, .toolbar input::before, .toolbar select::before, .btn::before, .tabs button.on::before, .seg button.on::before,
+.store-hero::before, .store-banner::before, .trainer-card::before, .pass-hero::before, .gear-hero::before, .sheet h2::before, .gem-pack i::before,
+.team-pick > div::before, .team-btn::before, .sv-item::before, .popup .rewards span::before, .streak div::before, .bonus-sum span::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; display: block;
+  border: var(--fw) solid transparent; border-image: var(--frame) var(--fs) fill / var(--fw) / 0 stretch; image-rendering: pixelated;
+  filter: drop-shadow(0 3px 0 rgba(40,56,120,.22)); width: auto; height: auto; margin: 0; left: 0; top: 0; right: 0; bottom: 0; border-radius: 0; background: none;
+}
+/* frame colours */
+.chip, .fab, .status, .dock, .trainer, .toast, .enc-name, .close, .pick, .b-panel, .b-title, .ar-hint span, .tr-name { --frame: var(--f-hud); }
+.popup .box, .sheet > .sheet-in, .bd-body { --frame: var(--f-panel); }
+.btn, .tabs button.on, .seg button.on, .pick.on, .bd-act.gift { --frame: var(--f-orange); }
+.btn.blue, .store-hero, .store-banner, .trainer-card, .pass-hero, .gear-hero, .sheet h2, .gem-pack i, .team-btn { --frame: var(--f-blue); }
+.btn.red, .popup .rewards span.bad { --frame: var(--f-red); }
+.btn.ghost { --frame: var(--f-card); }
+.bd-perk.on, .streak div.now { --frame: var(--f-pink); }
+.streak div.done, .pt-cell.ready, .switch.on { --frame: var(--f-green); }
+.streak div.now { --frame: var(--f-orange); }
+
+/* ---------- Colours & typography on light panels ---------- */
+.glass, .chip, .fab, .status, .trainer, .toast, .enc-name, .close, .pick, .b-panel, .b-title { color: var(--text) !important; }
+.trainer .info small, .status { color: var(--muted) !important; }
+.screen.sheet:not(.mon-detail) { background: rgba(40,56,120,.4) !important; }
+.sheet > .sheet-in { margin: 0 6px; color: var(--text); animation: sheetUp .32s cubic-bezier(.2,.9,.3,1); padding-top: 22px; }
+.sheet h2 { color: #fff; margin: -4px -4px 16px; padding: 12px 14px 12px 16px; font-size: 22px; text-shadow: 2px 2px 0 #28489e; }
+.sheet h2 .close { color: var(--text) !important; }
+.sheet h3 { color: #3858a8; font-size: 17px; }
+.popup h2 { color: #3858a8; font-size: 20px; }
+.popup p, .popup .left, .sheet small, .row small, .stats span, .quest small, .medal small, .set-row small, .bd-hint, .store-note, .pass-how,
+.bd-perk small, .bd-aff small, .md-grid span, .wallet small, .appraise, .card .s, .card .num { color: var(--muted) !important; }
+.stats b, .card .n, .row b, .quest b, .set-row b, .medal b { color: var(--text); }
+.card .cp { color: #c05010; }
+.card .badge { border-radius: 4px; }
+.tabs { padding: 6px; gap: 2px; } .tabs button { color: var(--muted); font-weight: 700; z-index: 0; font-size: 13px; letter-spacing: 0 !important; padding: 9px 2px; }
+.tabs button.on, .seg button.on { color: #fff; text-shadow: 1px 1px 0 #a06010; }
+.seg { padding: 6px; } .seg button { color: var(--muted); }
+.btn { color: #4a2800 !important; font-weight: 700; padding: 13px 20px; }
+.btn.blue, .btn.red { color: #fff !important; text-shadow: 1px 1px 0 rgba(0,0,0,.25); }
+.btn.ghost { color: var(--text) !important; }
+.btn:active, .bd-act:active, .dk:active, .pick:active { transform: translateY(2px); }
+.btn[disabled] { opacity: .5; filter: grayscale(.4); }
+.store-hero, .store-banner, .trainer-card, .pass-hero, .gear-hero { color: #fff; padding: 18px; }
+.store-hero small, .store-hero span, .trainer-card small, .pass-hero small, .store-banner small { color: #e8f0ff !important; }
+.gem-pack { color: var(--text); } .gem-pack small { color: #4878d8 !important; }
+.gem-pack i { color: #fff; padding: 8px 16px; background: none; }
+.gem-pack em { border-radius: 4px; background: #e84848; color: #fff; box-shadow: 0 0 0 2px #a02020; }
+.popup .rewards span { padding: 8px 14px; color: var(--text); }
+.streak div { color: var(--muted); padding: 8px 0; } .streak div.done, .streak div.now { color: #fff; text-shadow: 1px 1px 0 rgba(0,0,0,.25); }
+.bonus-sum span { color: var(--text) !important; padding: 7px 12px; }
+.type { border-radius: 4px; box-shadow: 0 2px 0 rgba(0,0,0,.2); }
+.switch { border-radius: 6px; background: #c8d8ff; box-shadow: inset 0 0 0 2px #88a8e8; }
+.switch.on { background: #58c048; box-shadow: inset 0 0 0 2px #307828; }
+.switch::after { border-radius: 4px; box-shadow: 0 0 0 2px #3858a8; }
+.close { width: 42px; height: 42px; font-size: 16px; }
+.dk .dot, .pokebtn .dot { border-radius: 6px !important; border: 2px solid #fff !important; }
+.empty-note { color: var(--muted); }
+
+/* progress bars: chunky pixel segments */
+.xpbar, .bd-bar, .egg-prog, .quest .prog, .hpbar, .enbar, .lvlbar, .statrow .bar { border-radius: 3px !important; background: #c8d8ff !important; box-shadow: 0 0 0 2px #3858a8; }
+.xpbar i, .bd-bar i, .egg-prog i, .quest .prog i, .hpbar i, .enbar i, .lvlbar i { border-radius: 0 !important; box-shadow: none !important;
+  background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.35) 0 2px, transparent 2px 8px) !important; }
+.xpbar i, .quest .prog i { background-color: #58c048 !important; }
+.bd-bar.aff i { background-color: #f05888 !important; } .bd-bar.food i { background-color: #f8a830 !important; } .bd-bar.mood i { background-color: #58c048 !important; }
+.egg-prog i { background-color: #f8a830 !important; }
+
+/* ---------- HUD & dock ---------- */
+.hud-ava { border-radius: 10px !important; background: #fff !important; box-shadow: 0 0 0 3px var(--c, #3858a8), 0 0 0 5px #fff, 0 3px 0 5px rgba(40,56,120,.25) !important; }
+.trainer .lvl-badge { border-radius: 6px !important; background: #f8a830 !important; color: #fff !important; border: 2px solid #fff !important; text-shadow: 1px 1px 0 #a06010; font-size: 11px !important; }
+.trainer { padding: 7px 18px 7px 7px; }
+.chip { padding: 11px 13px; }
+.gem-chip { color: #6040c0 !important; }
+.dock { height: 72px; }
+.dk { color: var(--muted); font-size: 11px; font-weight: 700; }
+.dk:hover { background: rgba(72,120,216,.08); color: var(--text); }
+.dock .pokebtn { box-shadow: inset -8px -10px 16px rgba(0,0,0,.28), inset 6px 8px 12px rgba(255,255,255,.35), 0 0 0 4px #3858a8, 0 0 0 7px #fff, 0 6px 0 7px rgba(40,56,120,.25); }
+/* pixel icons (Pixelarticons, MIT) */
+.dk svg, .fab svg { display: none; }
+.dk::before, .fab::after { content: ""; width: 26px; height: 26px; background: currentColor; -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }
+.fab { display: grid; place-items: center; color: #3858a8 !important; }
+#compassIcon { display: none; }
+#btnProfile { --ic: url(https://cdn.jsdelivr.net/npm/pixelarticons@1.8.1/svg/user.svg); }
+#btnPass { --ic: url(https://cdn.jsdelivr.net/npm/pixelarticons@1.8.1/svg/trophy.svg); }
+#btnBuddy { --ic: url(https://cdn.jsdelivr.net/npm/pixelarticons@1.8.1/svg/heart.svg); }
+#btnBag { --ic: url(https://cdn.jsdelivr.net/npm/pixelarticons@1.8.1/svg/briefcase.svg); }
+#btnSettings { --ic: url(https://cdn.jsdelivr.net/npm/pixelarticons@1.8.1/svg/sliders.svg); }
+#btnCompass { --ic: url(https://cdn.jsdelivr.net/npm/pixelarticons@1.8.1/svg/map.svg); }
+#btnCenter { --ic: url(https://cdn.jsdelivr.net/npm/pixelarticons@1.8.1/svg/gps.svg); }
+#btnPocket { --ic: url(https://cdn.jsdelivr.net/npm/pixelarticons@1.8.1/svg/moon.svg); }
+.trn-name { border-radius: 4px; background: #3858a8; box-shadow: 0 0 0 2px #fff; }
+.trn-head { box-shadow: 0 6px 0 rgba(0,0,0,.25), 0 0 0 3px #fff; }
+
+/* ---------- Screens with their own backgrounds ---------- */
+.mon-detail { background: #e8f0ff !important; color: var(--text); }
+.md-hero { background-color: #a8d0ff; }
+.md-body { color: var(--text); }
+.md-cp { color: var(--muted); } .md-cp b { color: var(--text); }
+.chain span { color: var(--muted); }
+.buddy-view { background: #e8f0ff; color: var(--text); }
+.bd-scene { background: linear-gradient(#a8d8ff 0 58%, #78c868 58%) !important; }
+.bd-floor { border-radius: 50% !important; background: rgba(40,96,40,.3) !important; height: 46px; bottom: 34px; left: 22%; right: 22%; }
+.bd-title b { color: var(--text); font-size: 26px; text-shadow: 2px 2px 0 #fff; }
+.bd-title small { display: inline-block; margin-top: 6px; color: var(--text); background: #fff; padding: 3px 8px; border-radius: 6px; box-shadow: 0 0 0 2px #3858a8; }
+.bd-body { margin-top: -20px; padding: 22px 18px; }
+.bd-stat span { color: var(--text); } .bd-stat b { color: var(--text); }
+.bd-act { color: var(--text); } .bd-act small { color: var(--muted); }
+.bd-perk { opacity: .6; } .bd-perk.on { opacity: 1; }
+.bd-perk.on small { color: #a03060 !important; }
+.buddy .bd-bubble { border-radius: 6px; box-shadow: 0 0 0 2px #3858a8; }
+.bd-bubble::after { border-top-color: #3858a8 !important; }
+/* encounter & battle */
+.enc-name small, .b-panel .cp { color: var(--muted); }
+.enc-name .cpv { color: #c05010; }
+.pick { color: var(--text) !important; } .pick.on { color: #fff !important; text-shadow: 1px 1px 0 #a06010; }
+.pick[disabled] { opacity: .45; }
+.b-panel b { color: var(--text); } .b-title small { color: var(--muted); }
+.ar-hint span { color: var(--text); }
+.hint, .b-hint { text-shadow: 2px 2px 0 #28489e, -1px -1px 0 #28489e; }
+/* toast */
+.toast { color: var(--text) !important; font-size: 18px; } .toast small { color: var(--muted); }
+/* stop screen label */
+.sv-item { color: var(--text); padding: 8px 12px; }
+.pass-lvl span { color: #e8f0ff; }
+.pt-num { border-radius: 8px; background: #fff; color: var(--muted); box-shadow: 0 0 0 2px #88a8e8; }
+.pt-row.reached .pt-num { background: #f8a830; color: #fff; box-shadow: 0 0 0 2px #a06010; }
+.pt-cell { color: var(--text); } .pt-cell span { background: rgba(72,120,216,.1); border-radius: 4px; }
+.pt-cell.ready { color: #fff; } .pt-cell em { border-radius: 4px; }
+.gslot { color: var(--text); } .gslot small { color: var(--muted); } .gslot.on small { color: var(--text); }
+.gear-avatar b { color: #fff; }
+.team-pick > div { padding: 8px 4px; color: var(--text); }
+.team-btn { color: #fff; padding: 14px 16px; } .team-btn[disabled] { opacity: .5; }
+.wk-day.on { background: rgba(72,120,216,.12); border-radius: 6px; }
+.wk-day b { color: var(--text); }
+.tr-grid button { border-radius: 6px; background: #fff; box-shadow: 0 0 0 2px #c8d8ff; }
+.tr-grid button.on { background: #4878d8; box-shadow: 0 0 0 2px #28489e; }
+.tr-name { color: var(--text); }
+.toolbar input, .toolbar select { color: var(--text); padding: 12px 14px; }
+.toolbar select option { background: #fff; color: var(--text); }
+.flash { background: #fff; }
