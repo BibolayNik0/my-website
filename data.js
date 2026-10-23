@@ -297,3 +297,105 @@ const SONGS = {
     lead: [69,72,76,72, 69,72,76,79, 77,76,74,72, 74,76,72,0, 69,72,76,72, 69,72,76,81, 79,77,76,74, 72,71,69,0],
     bass: [45,45,57,45, 45,45,57,45, 41,41,53,41, 43,43,55,43, 45,45,57,45, 45,45,57,45, 41,41,53,41, 40,40,52,40] },
 };
+
+// Real height (dm), weight (hg) and gender rate (eighths female, -1 = genderless) from PokéAPI, index = id - 1
+const SIZES = [[7,69,1],[10,130,1],[20,1000,1],[6,85,1],[11,190,1],[17,905,1],[5,90,1],[10,225,1],[16,855,1],[3,29,4],[7,99,4],[11,320,4],[3,32,4],[6,100,4],[10,295,4],[3,18,4],[11,300,4],[15,395,4],[3,35,4],[7,185,4],[3,20,4],[12,380,4],[20,69,4],[35,650,4],[4,60,4],[8,300,4],[6,120,4],[10,295,4],[4,70,8],[8,200,8],[13,600,8],[5,90,0],[9,195,0],[14,620,0],[6,75,6],[13,400,6],[6,99,6],[11,199,6],[5,55,6],[10,120,6],[8,75,4],[16,550,4],[5,54,4],[8,86,4],[12,186,4],[3,54,4],[10,295,4],[10,300,4],[15,125,4],[2,8,4],[7,333,4],[4,42,4],[10,320,4],[8,196,4],[17,766,4],[5,280,4],[10,320,4],[7,190,2],[19,1550,2],[6,124,4],[10,200,4],[13,540,4],[9,195,2],[13,565,2],[15,480,2],[8,195,2],[15,705,2],[16,1300,2],[7,40,4],[10,64,4],[17,155,4],[9,455,4],[16,550,4],[4,200,4],[10,1050,4],[14,3000,4],[10,300,4],[17,950,4],[12,360,4],[16,785,4],[3,60,-1],[10,600,-1],[8,150,4],[14,392,4],[18,852,4],[11,900,4],[17,1200,4],[9,300,4],[12,300,4],[3,40,4],[15,1325,4],[13,1,4],[16,1,4],[15,405,4],[88,2100,4],[10,324,4],[16,756,4],[4,65,4],[13,600,4],[5,104,-1],[12,666,-1],[4,25,4],[20,1200,4],[4,65,4],[10,450,4],[15,498,0],[14,502,0],[12,655,4],[6,10,4],[12,95,4],[10,1150,4],[19,1200,4],[11,346,8],[10,350,4],[22,800,8],[4,80,4],[12,250,4],[6,150,4],[13,390,4],[8,345,-1],[11,800,-1],[13,545,4],[15,560,4],[14,406,8],[11,300,2],[13,445,2],[15,550,4],[14,884,0],[9,100,4],[65,2350,4],[25,2200,4],[3,40,-1],[3,65,1],[10,290,1],[8,245,1],[9,250,1],[8,365,-1],[4,75,1],[10,350,1],[5,115,1],[13,405,1],[18,590,1],[21,4600,1],[17,554,-1],[16,526,-1],[20,600,-1],[18,33,4],[40,165,4],[22,2100,4],[20,1220,-1],[4,40,-1]];
+
+// ---------- Trainer ----------
+const AVATAR_LOOKS = ['🧑', '👩', '👨', '🧒', '👧', '👦', '🧑‍🦰', '👩‍🦰', '🧑‍🦱', '👩‍🦱', '👱', '👱‍♀️', '🧔', '👩‍🦳', '🧑‍🦲', '🥷'];
+const AVATAR_COLORS = ['#3d7dca', '#e5484d', '#30a46c', '#ffcb05', '#8e4ec6', '#f76b15', '#ec4899', '#14b8a6'];
+const TEAMS = {
+  mystic:   { name: 'Мистик',   icon: '❄️', color: '#3d7dca', bonus: { dust: 10 },   desc: '+10% звёздной пыли' },
+  valor:    { name: 'Валор',    icon: '🔥', color: '#e5484d', bonus: { damage: 10 }, desc: '+10% урона в боях' },
+  instinct: { name: 'Инстинкт', icon: '⚡', color: '#f5b800', bonus: { xp: 10 },     desc: '+10% опыта' },
+};
+
+// ---------- Gear ----------
+const GEAR_SLOTS = {
+  head:  { name: 'Голова',   icon: '🧢' },
+  eyes:  { name: 'Очки',     icon: '👓' },
+  body:  { name: 'Одежда',   icon: '👕' },
+  hands: { name: 'Руки',     icon: '🧤' },
+  feet:  { name: 'Обувь',    icon: '👟' },
+  charm: { name: 'Талисман', icon: '🧿' },
+};
+const GEAR_STATS = {
+  catch:  { label: 'к поимке', unit: '%' },
+  xp:     { label: 'опыта', unit: '%' },
+  dust:   { label: 'звёздной пыли', unit: '%' },
+  egg:    { label: 'к пути для яиц', unit: '%' },
+  shiny:  { label: 'к шансу блестящих', unit: '%' },
+  card:   { label: 'к шансу карточек', unit: '%' },
+  damage: { label: 'урона в боях', unit: '%' },
+  radius: { label: 'к радиусу действия', unit: ' м' },
+  stop:   { label: 'предмет с покестопа', unit: '' },
+};
+const GEAR_RARITY = {
+  1: { name: 'Обычное',     color: '#b07a45', price: 150,  sell: 20 },
+  2: { name: 'Необычное',   color: '#9aa6b2', price: 300,  sell: 40 },
+  3: { name: 'Редкое',      color: '#d4a017', price: 600,  sell: 100 },
+  4: { name: 'Эпическое',   color: '#8e4ec6', price: 1200, sell: 250 },
+  5: { name: 'Легендарное', color: '#e5484d', price: 0,    sell: 600 },
+};
+const GEAR = [
+  { id: 'cap',       slot: 'head',  icon: '🧢', name: 'Кепка тренера',        rarity: 1, bonus: { xp: 3 } },
+  { id: 'panama',    slot: 'head',  icon: '👒', name: 'Панама путешественника', rarity: 2, bonus: { xp: 5, egg: 3 } },
+  { id: 'helmet',    slot: 'head',  icon: '⛑️', name: 'Каска',                rarity: 3, bonus: { damage: 10 } },
+  { id: 'tophat',    slot: 'head',  icon: '🎩', name: 'Цилиндр',              rarity: 4, bonus: { xp: 10, dust: 5 } },
+  { id: 'crown',     slot: 'head',  icon: '👑', name: 'Корона Канто',         rarity: 5, bonus: { xp: 15, dust: 10 }, exclusive: true },
+  { id: 'glasses',   slot: 'eyes',  icon: '👓', name: 'Очки коллекционера',   rarity: 1, bonus: { card: 10 } },
+  { id: 'shades',    slot: 'eyes',  icon: '🕶️', name: 'Солнцезащитные очки',  rarity: 2, bonus: { radius: 5 } },
+  { id: 'monocle',   slot: 'eyes',  icon: '🔍', name: 'Монокль',              rarity: 3, bonus: { shiny: 15, card: 15 } },
+  { id: 'goggles',   slot: 'eyes',  icon: '🥽', name: 'Очки-скаутер',         rarity: 4, bonus: { shiny: 30, radius: 10 } },
+  { id: 'tshirt',    slot: 'body',  icon: '👕', name: 'Футболка',             rarity: 1, bonus: { dust: 3 } },
+  { id: 'jacket',    slot: 'body',  icon: '🧥', name: 'Куртка',               rarity: 2, bonus: { dust: 6 } },
+  { id: 'vest',      slot: 'body',  icon: '🦺', name: 'Жилет следопыта',      rarity: 3, bonus: { stop: 1, egg: 5 } },
+  { id: 'kimono',    slot: 'body',  icon: '🥋', name: 'Кимоно',               rarity: 3, bonus: { damage: 12 } },
+  { id: 'cape',      slot: 'body',  icon: '🦸', name: 'Плащ чемпиона',        rarity: 5, bonus: { xp: 10, damage: 10, dust: 10 }, exclusive: true },
+  { id: 'gloves',    slot: 'hands', icon: '🧤', name: 'Перчатки',             rarity: 1, bonus: { catch: 3 } },
+  { id: 'mitts',     slot: 'hands', icon: '✋', name: 'Перчатки ловца',       rarity: 3, bonus: { catch: 7 } },
+  { id: 'boxing',    slot: 'hands', icon: '🥊', name: 'Боксёрские перчатки',  rarity: 3, bonus: { damage: 15 } },
+  { id: 'pitcher',   slot: 'hands', icon: '🫴', name: 'Рука питчера',         rarity: 4, bonus: { catch: 12 } },
+  { id: 'sneakers',  slot: 'feet',  icon: '👟', name: 'Кроссовки',            rarity: 1, bonus: { egg: 10 } },
+  { id: 'boots',     slot: 'feet',  icon: '🥾', name: 'Походные ботинки',     rarity: 2, bonus: { egg: 20 } },
+  { id: 'skates',    slot: 'feet',  icon: '🛼', name: 'Ролики',               rarity: 4, bonus: { egg: 35 } },
+  { id: 'jetboots',  slot: 'feet',  icon: '🚀', name: 'Реактивные ботинки',   rarity: 5, bonus: { egg: 50, radius: 10 }, exclusive: true },
+  { id: 'daisy',     slot: 'charm', icon: '🌼', name: 'Ромашка',              rarity: 1, bonus: { catch: 2, xp: 2 } },
+  { id: 'evileye',   slot: 'charm', icon: '🧿', name: 'Оберег',               rarity: 2, bonus: { catch: 5 } },
+  { id: 'hamsa',     slot: 'charm', icon: '🪬', name: 'Амулет',               rarity: 3, bonus: { xp: 8 } },
+  { id: 'orb',       slot: 'charm', icon: '🔮', name: 'Хрустальный шар',      rarity: 3, bonus: { card: 50 } },
+  { id: 'gem',       slot: 'charm', icon: '💎', name: 'Кристалл',             rarity: 4, bonus: { dust: 20 } },
+  { id: 'seasonstar', slot: 'charm', icon: '🌟', name: 'Звезда сезона',       rarity: 5, bonus: { shiny: 50, catch: 5 }, exclusive: true },
+];
+
+// ---------- Battle pass ----------
+const PASS_EPOCH = new Date(2026, 9, 1).getTime();   // season 1 starts on 1 Oct 2026
+const PASS_DAYS = 28;
+const PASS_TIERS = 30;
+const PASS_XP = 1000;                                 // pass XP per tier
+const PASS_PRICE = 600;                               // coins for the premium track
+const PASS_NAMES = ['Канто', 'Огонь и вода', 'Гроза', 'Тени', 'Драконы', 'Легенды'];
+const PASS_REWARDS = Array.from({ length: PASS_TIERS }, (_, i) => {
+  const t = i + 1;
+  const free = { 15: { gear: 'shades' }, 30: { pack: 2, coins: 100 } }[t]
+    || (t % 5 === 0 ? { pack: 1 } : t % 3 === 0 ? { great: 3 } : t % 2 === 0 ? { basic: 10 } : { berry: 2 });
+  const prem = { 1: { pack: 1, coins: 50 }, 10: { gear: 'crown' }, 20: { gear: 'cape' }, 25: { gear: 'jetboots' }, 30: { gear: 'seasonstar', pack: 3 } }[t]
+    || (t % 5 === 0 ? { pack: 2 } : t % 4 === 0 ? { ultra: 3 } : t % 3 === 0 ? { coins: 40 } : t % 2 === 0 ? { dust: 1500 } : { great: 5, lucky: t % 7 === 0 ? 1 : 0 });
+  return { free, prem };
+});
+const PASS_POINTS = { catch: 50, excellent: 25, spin: 50, hatch: 200, trainer: 300, raid: 600, quest: 400, km: 100, evolve: 100, streak: 200, pack: 30 };
+
+// ---------- Pokéstops on real places ----------
+const POI_ICONS = {
+  museum: '🏛️', art_gallery: '🎨', arts_centre: '🎨', theatre: '🎭', cinema: '🎬', library: '📚', monument: '🗿', memorial: '🗿',
+  castle: '🏰', fountain: '⛲', attraction: '🎡', viewpoint: '🔭', zoo: '🦁', aquarium: '🐠', park: '🌳', garden: '🌷', playground: '🛝',
+  place_of_worship: '⛪', church: '⛪', cafe: '☕', restaurant: '🍽️', fast_food: '🍔', ice_cream: '🍦', bar: '🍺', beer: '🍺', pub: '🍺',
+  bakery: '🥐', shop: '🛍️', clothing_store: '👗', grocery: '🛒', books: '📚', music: '🎵', stadium: '🏟️', sports_centre: '🏟️',
+  swimming: '🏊', college: '🎓', school: '🎓', university: '🎓', town_hall: '🏛️', post: '✉️', railway: '🚉', bus: '🚌', harbor: '⚓',
+  hospital: '🏥', pharmacy: '💊', lodging: '🏨', hotel: '🏨', bank: '🏦', atm: '🏧', fuel: '⛽', toilets: '🚻', cemetery: '🕯️',
+};
+const STOP_FALLBACK = [
+  ['🎨', 'Граффити на стене'], ['🪑', 'Старая скамейка'], ['⛲', 'Маленький фонтанчик'], ['🖼️', 'Мурал'], ['🗿', 'Скульптура во дворе'],
+  ['🛝', 'Детская площадка'], ['🏛️', 'Арка'], ['📮', 'Почтовый ящик'], ['🪧', 'Памятная табличка'], ['🏮', 'Старинный фонарь'],
+  ['🧩', 'Мозаика'], ['⛺', 'Беседка'], ['🌷', 'Клумба'], ['🐈', 'Кошачий двор'], ['🌳', 'Большое дерево'], ['🚲', 'Велопарковка'],
+];

@@ -87,9 +87,23 @@
   const fmtNum = (n) => Math.floor(n).toLocaleString('ru-RU');
   const pick = (arr, r = Math.random) => arr[Math.floor(r() * arr.length)];
 
+  // ================= SIZE & GENDER =================
+  // size factor ~ mean of 3 uniforms in [0.64, 1.36]: about 5% XS (< 0.8) and 5% XL (> 1.2)
+  function sizeGender(spId, r) {
+    const sz = Math.round((0.64 + (r() + r() + r()) / 3 * 0.72) * 100) / 100;
+    const rate = SIZES[spId - 1][2];
+    return { sz, g: rate < 0 ? null : r() < rate / 8 ? 'f' : 'm' };
+  }
+  const sizeTag = (sz) => sz < 0.8 ? 'XS' : sz > 1.2 ? 'XL' : '';
+  const genderIcon = (g) => g === 'f' ? '<span class="gender f">♀</span>' : g === 'm' ? '<span class="gender m">♂</span>' : '';
+  function heightWeight(spId, sz) {
+    const [h, w] = SIZES[spId - 1];
+    return { h: (h / 10 * sz).toFixed(2).replace('.', ','), w: (w / 10 * sz * sz).toFixed(1).replace('.', ',') };
+  }
+
   // ================= SAVE =================
   const SAVE_KEY = 'pokemon-go-v1';
-  const DEFAULT_SETTINGS = { mapStyle: 'auto', buildings: true, tilt: true, sprites: 'anim', sound: true, music: true, vibro: true,
+  const DEFAULT_SETTINGS = { mapStyle: 'auto', buildings: true, tilt: true, sprites: 'anim', sound: true, music: true, vibro: true, saver: false, ar: false,
     radius: true, radar: true, weatherFx: true };
   const defaultState = () => ({
     xp: 0, balls: { basic: 20, great: 5, ultra: 0 }, items: { berry: 3, incense: 1, lucky: 1, pass: 0 }, candy: {},
@@ -100,13 +114,18 @@
     quests: null, lastCatchDay: '', incenseUntil: 0, luckyUntil: 0, freePassDay: '', streak: { last: '', count: 0 },
     medals: {}, tutorialDone: false, uid: 1, settings: { ...DEFAULT_SETTINGS },
     cards: {}, shinyCards: {}, shards: 0, packs: 1, setsClaimed: {},
+    trainer: { name: '', look: '🧑', color: '#3d7dca', team: null },
+    gear: { owned: { cap: true, sneakers: true }, equip: { head: 'cap', feet: 'sneakers' } }, gearShop: null,
+    pass: null, journal: {}, xlCaught: 0, xsCaught: 0,
   });
   function migrate(p) {
     const s = Object.assign(defaultState(), p);
     s.settings = Object.assign({ ...DEFAULT_SETTINGS }, p.settings || {});
-    s.items = Object.assign({ berry: 0, incense: 0, lucky: 0, pass: 0 }, p.items || {});
-    s.balls = Object.assign({ basic: 0, great: 0, ultra: 0 }, p.balls || {});
+    s.items = Object.assign({ berry: 0, incense: 0, lucky: 0, pass: 0 }, p.items || defaultState().items);
+    s.balls = Object.assign({ basic: 0, great: 0, ultra: 0 }, p.balls || defaultState().balls);
+    s.trainer = Object.assign(defaultState().trainer, p.trainer || {});
     s.mons.forEach((m) => {
+      if (m.sz === undefined) Object.assign(m, sizeGender(m.sp, rng(hash('sg' + m.uid))));
       if (!m.uid) m.uid = s.uid++;
       if (!m.iv) {
         // old saves only stored CP: pick IVs and the level that best matches it
@@ -124,17 +143,33 @@
   try { const raw = localStorage.getItem(SAVE_KEY); if (raw) S = migrate(JSON.parse(raw)); } catch (e) {}
   function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
 
+  // ================= BONUSES (gear + team) =================
+  const GEAR_BY_ID = Object.fromEntries(GEAR.map((g) => [g.id, g]));
+  function bonus(stat) {
+    let v = 0;
+    for (const slot in S.gear.equip) { const g = GEAR_BY_ID[S.gear.equip[slot]]; if (g && g.bonus[stat]) v += g.bonus[stat]; }
+    const team = S.trainer.team && TEAMS[S.trainer.team];
+    if (team && team.bonus[stat]) v += team.bonus[stat];
+    return v;
+  }
+  const pct = (stat) => bonus(stat) / 100;
+  const catchRadius = () => CATCH_RADIUS + bonus('radius');
+  const stopRadius = () => STOP_RADIUS + bonus('radius');
+  const dustGain = (n) => Math.round(n * (1 + pct('dust')));
+  const shinyChance = () => SHINY_CHANCE * (1 + pct('shiny'));
+  const bonusText = (b) => Object.keys(b).map((k) => `+${b[k]}${GEAR_STATS[k].unit} ${GEAR_STATS[k].label}`).join(', ');
+
   // ================= SPRITES =================
   const SPR = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
-  const spriteUrl = (id, shiny, mode = S.settings.sprites) =>
+  const spriteUrl = (id, shiny, mode = spriteMode()) =>
     mode === 'anim' ? `${SPR}other/showdown/${shiny ? 'shiny/' : ''}${id}.gif` : `${SPR}${shiny ? 'shiny/' : ''}${id}.png`;
-  const backUrl = (id, shiny, mode = S.settings.sprites) =>
+  const backUrl = (id, shiny, mode = spriteMode()) =>
     mode === 'anim' ? `${SPR}other/showdown/back/${shiny ? 'shiny/' : ''}${id}.gif` : `${SPR}back/${shiny ? 'shiny/' : ''}${id}.png`;
   const pixelUrl = (id, shiny) => `${SPR}${shiny ? 'shiny/' : ''}${id}.png`;
   const artUrl = (id, shiny) => `${SPR}other/official-artwork/${shiny ? 'shiny/' : ''}${id}.png`;
   const fallback = (id) => `onerror="this.onerror=null;this.className=this.className.replace('anim','pixel');this.src='${SPR}${id}.png'"`;
   const sprImg = (id, shiny, cls = '') =>
-    `<img class="spr ${S.settings.sprites} ${cls}" src="${spriteUrl(id, shiny)}" alt="" draggable="false" ${fallback(id)}>`;
+    `<img class="spr ${spriteMode()} ${cls}" src="${spriteUrl(id, shiny)}" alt="" draggable="false" ${fallback(id)}>`;
   function sizeSprite(im, maxH, maxW, scale = 3) {
     const fit = () => { const k = Math.min(scale, maxH / im.naturalHeight, maxW / im.naturalWidth); im.style.width = im.naturalWidth * k + 'px'; im.style.height = im.naturalHeight * k + 'px'; };
     if (im.complete && im.naturalWidth) fit(); else im.onload = fit;
@@ -247,6 +282,7 @@
   function levelFromXp(xp) { let lvl = 1, need = 1000, rest = xp; while (rest >= need) { rest -= need; lvl++; need = Math.round(need * 1.35); } return { lvl, rest, need }; }
   const playerLvl = () => levelFromXp(S.xp).lvl;
   function rewardLabel(k, n) {
+    if (k === 'gear') { const g = GEAR_BY_ID[n]; return `${g.icon} ${g.name}`; }
     const def = BALLS[k] || ITEMS[k] || CURRENCY[k];
     return `${def.icon} ${k === 'dust' ? fmtNum(n) : '×' + n}`;
   }
@@ -259,6 +295,7 @@
       else if (k === 'coins') S.coins += n;
       else if (k === 'pack') S.packs += n;
       else if (k === 'shards') S.shards += n;
+      else if (k === 'gear') { if (!addGear(n)) { parts.push(`${rewardLabel(k, n)} → 🪙 ${GEAR_RARITY[GEAR_BY_ID[n].rarity].sell}`); continue; } }
       else S.items[k] = (S.items[k] || 0) + n;
       parts.push(rewardLabel(k, n));
     }
@@ -267,12 +304,14 @@
   }
   const rewardsHtml = (parts) => `<div class="rewards">${parts.map((p) => `<span>${p}</span>`).join('')}</div>`;
   function addXp(n) {
+    n = Math.round(n * (1 + pct('xp')));
     if (S.luckyUntil > Date.now()) n *= 2;
     const before = playerLvl(); S.xp += n; const after = playerLvl();
     save(); renderHud();
     for (let l = before + 1; l <= after; l++) {
       const parts = grant({ basic: 10, great: 5, ultra: l >= 5 ? 3 : 0, berry: 3, incense: l % 3 === 0 ? 1 : 0, pass: l % 2 === 0 ? 1 : 0, coins: 20, pack: l % 5 === 0 ? 1 : 0 });
       if (l % 5 === 0) addEgg(10); else if (l % 2 === 0) addEgg(5);
+      if (l === 5 && !S.trainer.team) setTimeout(teamPicker, 300);
       setTimeout(() => { SFX.level(); vibrate([60, 40, 60]); }, 400);
       popup(`<div class="big">🎉</div><h2>Уровень ${l}!</h2><p>Редкие покемоны теперь встречаются чаще, а покемонов можно усиливать до уровня ${Math.min(40, l + 2)}.</p>
         ${rewardsHtml(parts)}<button class="btn" data-ok>Круто!</button>`);
@@ -339,6 +378,8 @@
     { id: 'raid',    name: 'Рейдер',         icon: '🔥', val: () => S.raidWins, tiers: [1, 20, 100], unit: 'рейдов' },
     { id: 'curve',   name: 'Кручёный',       icon: '🌀', val: () => S.curveballs, tiers: [10, 100, 500], unit: 'бросков' },
     { id: 'cards',   name: 'Картограф',      icon: '🃏', val: () => cardsOwned(), tiers: [20, 75, 151], unit: 'карточек' },
+    { id: 'xl',      name: 'Великан',        icon: '🐘', val: () => S.xlCaught, tiers: [1, 10, 50], unit: 'XL-покемонов' },
+    { id: 'xs',      name: 'Кроха',          icon: '🐜', val: () => S.xsCaught, tiers: [1, 10, 50], unit: 'XS-покемонов' },
   ];
   const MEDAL_COINS = [50, 150, 400];
   const TIER_NAMES = ['Бронза', 'Серебро', 'Золото'];
@@ -371,6 +412,7 @@
     const day = (S.streak.count - 1) % 7, rew = STREAK_REWARDS[day];
     const parts = grant(rew);
     if (day === 6) { addEgg(10); parts.push('🥚 10 км'); }
+    passXp(PASS_POINTS.streak);
     save();
     popup(`<div class="big">📅</div><h2>Ежедневный бонус</h2><p>Ты заходишь ${S.streak.count} ${plural(S.streak.count, 'день', 'дня', 'дней')} подряд!</p>
       ${streakHtml()}${rewardsHtml(parts)}<button class="btn" data-ok>Забрать</button>`);
@@ -387,7 +429,7 @@
   function renderHud() {
     const { lvl, rest, need } = levelFromXp(S.xp);
     $('lvlNum').textContent = lvl;
-    $('lvlText').textContent = `Тренер · ур. ${lvl}`;
+    $('lvlText').textContent = `${S.trainer.name || 'Тренер'} · ур. ${lvl}`;
     $('xpText').textContent = `${fmtNum(rest)} / ${fmtNum(need)} XP`;
     $('xpFill').style.width = (rest / need * 100) + '%';
     $('ballsCount').textContent = S.balls.basic + S.balls.great + S.balls.ultra;
@@ -444,7 +486,7 @@
     chip.classList.toggle('on', !!weather);
     if (!weather) return;
     chip.textContent = `${weatherIcon()} ${weather.temp}°`;
-    $('weatherFx').innerHTML = S.settings.weatherFx ? fxHtml(weather.kind) : '';
+    $('weatherFx').innerHTML = S.settings.weatherFx && !S.settings.saver ? fxHtml(weather.kind) : '';
   }
   function fxHtml(kind, n = 1) {
     let h = '';
@@ -509,11 +551,10 @@
     .setLngLat([DEFAULT_POS[1], DEFAULT_POS[0]]).addTo(map);
   const avatarEl = document.createElement('div');
   avatarEl.className = 'avatar';
-  avatarEl.innerHTML = '<div class="ava-shadow"></div><div class="ava-body"></div>';
   const avatarMarker = new maplibregl.Marker({ element: avatarEl, anchor: 'bottom' }).setLngLat([DEFAULT_POS[1], DEFAULT_POS[0]]).addTo(map);
   const buddyEl = document.createElement('div');
   buddyEl.className = 'buddy';
-  const buddyMarker = new maplibregl.Marker({ element: buddyEl, anchor: 'bottom', offset: [34, -2] }).setLngLat([DEFAULT_POS[1], DEFAULT_POS[0]]).addTo(map);
+  const buddyMarker = new maplibregl.Marker({ element: buddyEl, anchor: 'bottom', offset: [42, -2] }).setLngLat([DEFAULT_POS[1], DEFAULT_POS[0]]).addTo(map);
   function renderBuddyMarker() {
     const m = S.buddy && S.mons.find((x) => x.uid === S.buddy.uid);
     if (!m) { buddyEl.innerHTML = ''; return; }
@@ -522,7 +563,7 @@
   function updateRange() {
     const lat = pos ? pos[0] : DEFAULT_POS[0];
     const mpp = 40075016.686 * Math.cos(lat * Math.PI / 180) / (512 * Math.pow(2, map.getZoom()));
-    const px = 2 * CATCH_RADIUS / mpp, r = groundEl.querySelector('.range');
+    const px = 2 * catchRadius() / mpp, r = groundEl.querySelector('.range');
     r.style.width = r.style.height = px + 'px';
     r.style.display = S.settings.radius ? 'block' : 'none';
   }
@@ -537,7 +578,7 @@
     if (lastPos) {
       const d = dist(lastPos, p), dt = Math.max(0.5, (now - lastPosT) / 1000);
       // ignore GPS jitter and driving
-      if (d > 3 && d < 300 && d / dt <= MAX_SPEED && !isBlocked()) walk(d);
+      if (d > 3 && d < 300 && d / dt <= MAX_SPEED && !isBlocked()) { walk(d); journalRoute(p); }
     }
     lastPos = p; lastPosT = now; pos = p;
     const ll = [p[1], p[0]];
@@ -551,9 +592,12 @@
   // Walking: eggs, buddy candy, quests
   function walk(d) {
     S.walked += d;
+    journalDay().m += d;
     quest('walk', d);
+    ensurePass(); S.pass.m = (S.pass.m || 0) + d;
+    while (S.pass.m >= 1000) { S.pass.m -= 1000; passXp(PASS_POINTS.km); }
     const hatchNow = [];
-    S.eggs.forEach((e) => { e.walked = Math.min(e.km * 1000, e.walked + d); if (e.walked >= e.km * 1000) hatchNow.push(e); });
+    S.eggs.forEach((e) => { e.walked = Math.min(e.km * 1000, e.walked + d * (1 + pct('egg'))); if (e.walked >= e.km * 1000) hatchNow.push(e); });
     if (S.buddy) {
       const m = S.mons.find((x) => x.uid === S.buddy.uid);
       if (m) {
@@ -573,7 +617,8 @@
   const buddyKm = (m) => [1, 1, 3, 5, 5, 5][SP(m.sp).rarity];
 
   // ================= BIOMES =================
-  const biomeCache = new Map();
+  const biomeCache = new Map(), poiCache = new Map();
+  const STOP_COLORS = ['#2f80ed', '#1aa1b8', '#7b61ff', '#e0569b', '#14a37f', '#e8873a'];
   const cellKey = (i, j) => i + ':' + j;
   function inRing(pt, ring) {
     let inside = false;
@@ -607,12 +652,14 @@
       if (!biomeCache.has(k) && bounds.contains([(j + 0.5) * CELL, (i + 0.5) * CELL])) todo.push([i, j, k]);
     }
     if (!todo.length) return false;
-    let water, park;
+    let water, park, pois;
     try {
       water = withBbox(map.querySourceFeatures('openmaptiles', { sourceLayer: 'water' }));
       const green = new Set(['grass', 'wood', 'farmland', 'wetland', 'park']);
       park = withBbox(map.querySourceFeatures('openmaptiles', { sourceLayer: 'park' })
         .concat(map.querySourceFeatures('openmaptiles', { sourceLayer: 'landcover' }).filter((f) => green.has(f.properties.class))));
+      pois = map.querySourceFeatures('openmaptiles', { sourceLayer: 'poi' })
+        .filter((f) => f.geometry && f.geometry.type === 'Point' && poiName(f.properties));
     } catch (e) { return false; }
     const hits = (pt, list) => list.some(({ f, b }) => pt[0] >= b[0] && pt[0] <= b[2] && pt[1] >= b[1] && pt[1] <= b[3] && inFeature(pt, f));
     todo.forEach(([i, j, k]) => {
@@ -622,10 +669,35 @@
         if (hits(pt, water)) w++; else if (hits(pt, park)) g++;
       });
       biomeCache.set(k, w >= 1 ? 'water' : g >= 2 ? 'park' : 'city');
+      let best = null;
+      pois.forEach((f) => {
+        const [x, y] = f.geometry.coordinates;
+        if (y < i * CELL || y >= (i + 1) * CELL || x < j * CELL || x >= (j + 1) * CELL) return;
+        const tier = poiTier(f.properties);
+        if (tier < 0) return;
+        const rank = tier * 1e8 + (f.properties.rank || 99) * 1e6 + (hash(poiName(f.properties)) % 1e6);
+        if (!best || rank < best.rank) best = { rank, f, ll: [y, x] };
+      });
+      poiCache.set(k, best ? { ll: best.ll, name: poiName(best.f.properties), icon: POI_ICONS[best.f.properties.subclass] || POI_ICONS[best.f.properties.class] || '📍' } : null);
     });
     return true;
   }
   const biomeOf = (i, j) => biomeCache.get(cellKey(i, j)) || 'city';
+  // 0 = landmark, 1 = place to hang out, 2 = ordinary, -1 = never a Pokéstop
+  const POI_TIERS = [
+    ['attraction', 'museum', 'monument', 'memorial', 'castle', 'fountain', 'art_gallery', 'arts_centre', 'theatre', 'viewpoint', 'zoo', 'aquarium',
+      'place_of_worship', 'church', 'park', 'garden', 'stadium', 'library', 'town_hall', 'artwork', 'ruins', 'archaeological_site'],
+    ['cafe', 'restaurant', 'ice_cream', 'bakery', 'bar', 'beer', 'pub', 'cinema', 'music', 'playground', 'swimming', 'sports_centre', 'college',
+      'school', 'university', 'books', 'fast_food'],
+  ];
+  const POI_SKIP = new Set(['hospital', 'clinic', 'doctors', 'dentist', 'pharmacy', 'atm', 'bank', 'toilets', 'fuel', 'parking', 'car', 'laundry',
+    'cemetery', 'entrance', 'veterinary', 'funeral_directors']);
+  function poiTier(p) {
+    if (POI_SKIP.has(p.class) || POI_SKIP.has(p.subclass)) return -1;
+    for (let t = 0; t < POI_TIERS.length; t++) if (POI_TIERS[t].includes(p.subclass) || POI_TIERS[t].includes(p.class)) return t;
+    return 2;
+  }
+  const poiName = (p) => p['name:ru'] || p.name || p['name:latin'] || p.name_int || '';
 
   // ================= WORLD =================
   function speciesPick(r, biome) {
@@ -647,7 +719,7 @@
     const maxL = Math.min(30, playerLvl() + 4);
     const lvl = Math.min(35, 1 + Math.floor(r() * maxL) + (boosted ? 5 : 0));
     const iv = randIv(r, boosted ? 4 : 0);
-    return Object.assign({ sp, lvl, iv, cp: calcCp(sp.id, lvl, iv), boosted }, extra);
+    return Object.assign({ sp, lvl, iv, cp: calcCp(sp.id, lvl, iv), boosted }, sizeGender(sp.id, r), extra);
   }
 
   function generate() {
@@ -656,9 +728,14 @@
     const mons = [], stops = [], npcs = [];
     for (let i = ci - VIEW_CELLS; i <= ci + VIEW_CELLS; i++) {
       for (let j = cj - VIEW_CELLS; j <= cj + VIEW_CELLS; j++) {
-        const rs = rng(hash(`stop:${i}:${j}`));
-        if (rs() < 0.22) {
-          const stop = { id: `s${i}_${j}`, ll: [(i + rs()) * CELL, (j + rs()) * CELL] };
+        // stops appear once their cell has been checked for real places, so names and positions never jump
+        const rs = rng(hash(`stop:${i}:${j}`)), poi = poiCache.get(cellKey(i, j)), roll = rs();
+        if (poiCache.has(cellKey(i, j)) && (roll < 0.22 || (poi && roll < 0.55))) {
+          const fb = STOP_FALLBACK[hash(`stopname:${i}:${j}`) % STOP_FALLBACK.length];
+          const ll = [(i + rs()) * CELL, (j + rs()) * CELL];
+          const stop = poi ? { id: `s${i}_${j}`, ll: poi.ll, name: poi.name, icon: poi.icon, poi: true }
+            : { id: `s${i}_${j}`, ll, name: fb[1], icon: fb[0], poi: false };
+          stop.color = STOP_COLORS[hash(stop.name) % STOP_COLORS.length];
           const rr = rng(hash(`raid:${i}:${j}:${rwin}`));
           if (rr() < 0.12) {
             const tier = rr() < 0.15 ? 5 : rr() < 0.45 ? 4 : 3;
@@ -680,7 +757,7 @@
         for (let k = 0; k < n; k++) {
           const sp = speciesPick(r(), biome);
           const ll = [(i + r()) * CELL, (j + r()) * CELL];
-          const shiny = r() < SHINY_CHANCE;
+          const shiny = r() < shinyChance();
           const id = `m${i}_${j}_${win}_${k}_${sp.id}`;
           const mon = wildMon(sp, r, { id, ll, shiny });
           if (!S.gone[id]) mons.push(mon);
@@ -697,7 +774,7 @@
     const r = Math.random, a = r() * Math.PI * 2, d = 20 + r() * 40;
     const ci = Math.floor(pos[0] / CELL), cj = Math.floor(pos[1] / CELL);
     const sp = speciesPick(r(), biomeOf(ci, cj));
-    incenseSpawns.push(wildMon(sp, r, { id: 'i' + Date.now(), shiny: r() < SHINY_CHANCE * 2, exp: Date.now() + 5 * 60000,
+    incenseSpawns.push(wildMon(sp, r, { id: 'i' + Date.now(), shiny: r() < shinyChance() * 2, exp: Date.now() + 5 * 60000,
       ll: [pos[0] + (d * Math.cos(a)) / 111320, pos[1] + (d * Math.sin(a)) / (111320 * Math.cos(pos[0] * Math.PI / 180))] }));
     refreshWorld();
     toast('🪔 Ладан приманил покемона!', 1300);
@@ -715,7 +792,7 @@
     stops.forEach((s) => {
       const used = S.stops[s.id] && now - S.stops[s.id] < STOP_COOLDOWN;
       if (used && !s.raid) return;
-      const key = s.id + (s.raid ? '_' + s.raid.id : '') + (used ? '_u' : '');
+      const key = s.id + (s.poi ? 'p' : '') + (s.raid ? '_' + s.raid.id : '') + (used ? '_u' : '');
       want.set(key, { kind: 'stop', data: s, used });
     });
 
@@ -724,16 +801,21 @@
 
     const nearby = [];
     markers.forEach((v) => {
-      if (v.kind === 'stop' && v.data.raid) { const b = v.el.querySelector('.raid-badge'); if (b) b.textContent = `РЕЙД ${'★'.repeat(v.data.raid.tier - 2)} · ${fmtTime(v.data.raid.ends - now)}`; }
+      if (v.kind === 'stop') {
+        if (v.data.raid) { const b = v.el.querySelector('.raid-badge'); if (b) b.textContent = `РЕЙД ${'★'.repeat(v.data.raid.tier - 2)} · ${fmtTime(v.data.raid.ends - now)}`; }
+        const sd = dist(pos, v.data.ll);
+        v.el.classList.toggle('near', sd <= stopRadius()); v.el.classList.toggle('close', sd <= 160);
+      }
       if (v.kind !== 'mon') return;
-      const d = dist(pos, v.data.ll), close = d <= CATCH_RADIUS;
+      const d = dist(pos, v.data.ll), close = d <= catchRadius();
       if (v.close !== close) { v.close = close; v.el.classList.toggle('far', !close); }
       if (d < 400) nearby.push({ m: v.data, d });
     });
     nearby.sort((a, b) => a.d - b.d);
     renderRadar(nearby.slice(0, 10));
-    const nearCount = nearby.filter((x) => x.d <= CATCH_RADIUS).length;
+    const nearCount = nearby.filter((x) => x.d <= catchRadius()).length;
     const ci = Math.floor(pos[0] / CELL), cj = Math.floor(pos[1] / CELL), bm = BIOMES[biomeOf(ci, cj)];
+    pocketCheck();
     $('status').textContent = `${bm.icon} ${bm.name} · ` +
       (nearCount ? `Можно поймать: ${nearCount}` : nearby.length ? 'Подойди к покемону' : 'Гуляй, чтобы найти покемонов');
     cleanup();
@@ -752,10 +834,12 @@
       el.addEventListener('click', (e) => { e.stopPropagation(); tryTrainer(t); });
     } else {
       const s = v.data;
-      el.className = 'stop' + (v.used ? ' used' : '') + (s.raid ? ' raid' : '');
+      el.className = 'ps' + (v.used ? ' used' : '') + (s.raid ? ' raid' : '');
+      el.style.setProperty('--c', s.color);
       el.innerHTML = (s.raid ? `<div class="raid-badge"></div><div class="boss"><img src="${spriteUrl(s.raid.sp.id, false)}" alt="" ${fallback(s.raid.sp.id)}></div>` : '') +
-        '<div class="float"><div class="cube"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="pole"></div><div class="base"></div>';
-      el.addEventListener('click', (e) => { e.stopPropagation(); s.raid ? raidMenu(s, e) : useStop(s, e); });
+        `<div class="ps-label">${s.name}</div><div class="ps-disc"><div class="ps-ring"></div><div class="ps-face">${s.icon}</div></div>
+        <div class="ps-pole"></div><div class="ps-base"></div>`;
+      el.addEventListener('click', (e) => { e.stopPropagation(); s.raid ? raidMenu(s, e) : openStop(s); });
     }
     const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([v.data.ll[1], v.data.ll[0]]).addTo(map);
     markers.set(id, { marker, el, kind: v.kind, data: v.data, close: false });
@@ -779,40 +863,107 @@
     if (sig === radarSig && el.innerHTML) return;
     radarSig = sig;
     el.innerHTML = '<span class="lbl">РЯДОМ</span>' + (list.length ? list.map((x) =>
-      `<button class="rad-item ${x.d <= CATCH_RADIUS ? 'near' : ''} ${x.m.shiny ? 'shiny' : ''}" data-id="${x.m.id}">
+      `<button class="rad-item ${x.d <= catchRadius() ? 'near' : ''} ${x.m.shiny ? 'shiny' : ''}" data-id="${x.m.id}">
         <img src="${pixelUrl(x.m.sp.id, x.m.shiny)}" alt="">${fmtDist(x.d)}</button>`).join('')
       : '<span class="empty">Поблизости никого. Иди искать! 🚶</span>');
   }
   $('radar').addEventListener('click', (e) => {
     const b = e.target.closest('[data-id]'); if (!b) return;
     const v = markers.get(b.dataset.id); if (!v) return;
-    if (dist(pos, v.data.ll) <= CATCH_RADIUS) return tryEncounter(v.data);
+    if (dist(pos, v.data.ll) <= catchRadius()) return tryEncounter(v.data);
     follow = false;
     map.easeTo({ center: [v.data.ll[1], v.data.ll[0]], duration: 700 });
     toast(`${v.data.sp.name}<br><small>${fmtDist(dist(pos, v.data.ll))} — иди туда!</small>`);
   });
 
   // ================= POKÉSTOPS =================
-  function useStop(s, ev) {
-    const d = dist(pos, s.ll);
-    if (d > STOP_RADIUS) { SFX.tap(); return toast(`🎁 Подойди ближе<br><small>${fmtDist(d)}</small>`); }
-    if (S.stops[s.id] && Date.now() - S.stops[s.id] < STOP_COOLDOWN) return toast(`Покестоп перезаряжается<br><small>${fmtTime(STOP_COOLDOWN - (Date.now() - S.stops[s.id]))}</small>`);
-    const r = Math.random;
-    const parts = grant({
+  function randomGear(r, maxRarity) {
+    const pool = GEAR.filter((g) => !g.exclusive && g.rarity <= maxRarity);
+    const w = pool.map((g) => [g, [0, 10, 5, 2, 1][g.rarity]]);
+    let x = r() * w.reduce((a, [, n]) => a + n, 0);
+    for (const [g, n] of w) if ((x -= n) <= 0) return g;
+    return pool[0];
+  }
+  function spinStop(s) {
+    const r = Math.random, rew = {
       basic: 3 + Math.floor(r() * 3),
-      great: r() < 0.4 ? 1 + Math.floor(r() * 2) : 0,
+      great: (r() < 0.4 ? 1 + Math.floor(r() * 2) : 0) + bonus('stop'),
       ultra: r() < 0.1 ? 1 : 0,
       berry: r() < 0.35 ? 1 + Math.floor(r() * 2) : 0,
       incense: r() < 0.03 ? 1 : 0,
-    });
-    if (r() < 0.14 && S.eggs.length < MAX_EGGS) { const km = r() < 0.5 ? 2 : r() < 0.8 ? 5 : 10; addEgg(km); parts.push(`🥚 ${km} км`); }
-    S.stops[s.id] = Date.now(); S.spins++; save();
+    };
+    const loot = Object.keys(rew).filter((k) => rew[k]).map((k) => [(BALLS[k] || ITEMS[k]).icon, '×' + rew[k]]);
+    grant(rew);
+    if (r() < 0.14 && S.eggs.length < MAX_EGGS) { const km = r() < 0.5 ? 2 : r() < 0.8 ? 5 : 10; addEgg(km); loot.push(['🥚', km + ' км']); }
+    if (r() < 0.02) { const g = randomGear(r, 2); if (addGear(g.id)) loot.push([g.icon, g.name]); }
+    S.stops[s.id] = Date.now(); S.spins++; journalDay().s++; save();
     SFX.spin(); vibrate(40);
-    if (ev) burst(ev.clientX, ev.clientY, ['🔴', '🔵', '✨', '🍓'], 12);
-    quest('spin');
-    addXp(50);
+    quest('spin'); passXp(PASS_POINTS.spin);
+    const xp = addXp(50);
     refreshWorld();
-    toast(`🎁 Покестоп!<br>${parts.join('  ')}<br><small>+50 XP</small>`, 2200);
+    return { loot, xp };
+  }
+
+  // Full-screen Pokéstop: spin the photo disc with a finger to get items
+  let stopUi = null;
+  function openStop(s) {
+    const now = Date.now(), used = S.stops[s.id] && now - S.stops[s.id] < STOP_COOLDOWN;
+    const d = dist(pos, s.ll), far = d > stopRadius();
+    const view = $('stopView');
+    view.style.setProperty('--c', s.color);
+    view.innerHTML = `
+      <button class="close sv-close" id="svClose">✕</button>
+      <div class="sv-head"><div class="sv-name">${s.name}</div>
+        <div class="sv-sub">${s.poi ? '📍 Настоящее место' : '📍 Покестоп'} · ${fmtDist(d)}${s.raid ? ' · 🔥 Рейд' : ''}</div></div>
+      <div class="sv-disc-wrap"><div class="sv-disc ${used ? 'used' : ''}" id="svDisc"><div class="sv-photo">${s.icon}</div></div></div>
+      <div class="sv-hint" id="svHint">${far ? `Подойди ближе — ещё ${fmtDist(d - stopRadius())}` : used ? `Перезарядка: ${fmtTime(STOP_COOLDOWN - (now - S.stops[s.id]))}` : 'Крути диск пальцем! 👆'}</div>
+      <div class="sv-loot" id="svLoot"></div>`;
+    view.classList.add('on');
+    stopUi = { s, angle: 0, lastA: null, can: !far && !used, done: false };
+    $('svClose').onclick = closeStop;
+    SFX.tap();
+  }
+  function closeStop() { $('stopView').classList.remove('on'); stopUi = null; }
+  $('stopView').addEventListener('pointerdown', (e) => {
+    const disc = e.target.closest('#svDisc');
+    if (!disc || !stopUi) return;
+    disc.setPointerCapture(e.pointerId);
+    stopUi.drag = true; stopUi.lastA = null;
+  });
+  $('stopView').addEventListener('pointermove', (e) => {
+    if (!stopUi || !stopUi.drag || stopUi.done) return;
+    const disc = $('svDisc'), r = disc.getBoundingClientRect();
+    const a = Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2));
+    if (stopUi.lastA !== null) { let da = a - stopUi.lastA; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI; stopUi.angle += da; }
+    stopUi.lastA = a;
+    disc.style.transform = `rotate(${stopUi.angle}rad)`;
+    if (Math.abs(stopUi.angle) > Math.PI * 1.2) {
+      if (stopUi.can) doSpin();
+      else if (!stopUi.warned) { stopUi.warned = true; SFX.miss(); vibrate(60); }
+    }
+  });
+  $('stopView').addEventListener('pointerup', () => { if (stopUi) { stopUi.drag = false; if (!stopUi.done) { const d = $('svDisc'); d.style.transition = 'transform .4s'; d.style.transform = ''; setTimeout(() => { d.style.transition = ''; }, 400); stopUi.angle = 0; } } });
+  function doSpin() {
+    const ui = stopUi; ui.done = true;
+    const disc = $('svDisc');
+    disc.style.setProperty('--from', `${ui.angle}rad`);
+    disc.style.transform = '';
+    disc.classList.add('spin');
+    const { loot, xp } = spinStop(ui.s);
+    setTimeout(() => disc.classList.add('used'), 700);
+    const box = $('svLoot'), dr = disc.getBoundingClientRect();
+    box.style.left = dr.left + dr.width / 2 + 'px'; box.style.top = dr.top + dr.height / 2 + 'px';
+    loot.concat([['⭐', `+${xp} XP`]]).forEach(([icon, label], i) => {
+      const it = document.createElement('div');
+      it.className = 'sv-item';
+      const a = (i / (loot.length + 1)) * Math.PI * 2 - Math.PI / 2, rr = 120 + (i % 2) * 30;
+      it.style.setProperty('--tx', Math.cos(a) * rr + 'px'); it.style.setProperty('--ty', Math.sin(a) * rr + 'px');
+      it.style.animationDelay = 0.25 + i * 0.08 + 's';
+      it.innerHTML = `<b>${icon}</b><small>${label}</small>`;
+      box.appendChild(it);
+    });
+    $('svHint').textContent = 'Отлично! Предметы в сумке 🎒';
+    setTimeout(() => { if (stopUi === ui) closeStop(); }, 2600);
   }
 
   // ================= EGGS =================
@@ -829,13 +980,15 @@
   function hatch(egg) {
     S.eggs = S.eggs.filter((e) => e !== egg);
     const r = Math.random, sp = pick(eggPool(egg.km), r);
-    const lvl = Math.min(20, playerLvl()), iv = randIv(r, 10), shiny = r() < SHINY_CHANCE * 2;
-    const mon = { uid: S.uid++, sp: sp.id, lvl, iv, cp: calcCp(sp.id, lvl, iv), t: Date.now(), shiny, fav: false, hatched: true };
+    const lvl = Math.min(20, playerLvl()), iv = randIv(r, 10), shiny = r() < shinyChance() * 2;
+    const mon = Object.assign({ uid: S.uid++, sp: sp.id, lvl, iv, cp: calcCp(sp.id, lvl, iv), t: Date.now(), shiny, fav: false, hatched: true }, sizeGender(sp.id, r));
     S.mons.unshift(mon);
-    const fam = family(sp.id), candy = { 2: 5, 5: 10, 10: 20 }[egg.km], dust = { 2: 400, 5: 800, 10: 1600 }[egg.km];
+    const fam = family(sp.id), candy = { 2: 5, 5: 10, 10: 20 }[egg.km], dust = dustGain({ 2: 400, 5: 800, 10: 1600 }[egg.km]);
     S.candy[fam] = (S.candy[fam] || 0) + candy; S.stardust += dust;
     const first = !S.caught[sp.id];
-    S.caught[sp.id] = (S.caught[sp.id] || 0) + 1; S.seen[sp.id] = true; S.hatched++;
+    S.caught[sp.id] = (S.caught[sp.id] || 0) + 1; S.seen[sp.id] = true; S.hatched++; journalDay().h++;
+    if (sizeTag(mon.sz) === 'XL') S.xlCaught++; else if (sizeTag(mon.sz) === 'XS') S.xsCaught++;
+    passXp(PASS_POINTS.hatch);
     if (shiny) S.shinyCaught++;
     save();
     quest('hatch');
@@ -862,7 +1015,7 @@
   const totalBalls = () => S.balls.basic + S.balls.great + S.balls.ultra;
   function tryEncounter(mon) {
     const d = dist(pos, mon.ll);
-    if (d > CATCH_RADIUS) { SFX.tap(); return toast(`<img src="${pixelUrl(mon.sp.id, mon.shiny)}" alt="">${mon.sp.name} далеко<br><small>${fmtDist(d)} — подойди ближе</small>`); }
+    if (d > catchRadius()) { SFX.tap(); return toast(`<img src="${pixelUrl(mon.sp.id, mon.shiny)}" alt="">${mon.sp.name} далеко<br><small>${fmtDist(d)} — подойди ближе</small>`); }
     if (!totalBalls()) return toast('Нет покеболов!<br><small>Загляни на покестоп 🎁 или в магазин</small>');
     startEncounter(mon);
   }
@@ -873,13 +1026,14 @@
       busy: false, ringT: 0, x: 0, dir: 1, raf: 0, fails: 0, berry: false };
     $('encounter').classList.toggle('night', isNight());
     $('encFx').innerHTML = weather && S.settings.weatherFx ? fxHtml(weather.kind, 0.6) : '';
-    $('encName').textContent = (mon.shiny ? '✨ ' : '') + mon.sp.name;
+    $('encName').innerHTML = (mon.shiny ? '✨ ' : '') + mon.sp.name + genderIcon(mon.g) + (sizeTag(mon.sz) ? ` <span class="sz">${sizeTag(mon.sz)}</span>` : '');
+    applyEncAr();
     $('encCp').textContent = 'CP ' + mon.cp;
     $('encInfo').innerHTML = `${typeChip(mon.sp.type)} <span style="color:${RARITY[mon.sp.rarity].color};font-size:12px;font-weight:800">● ${RARITY[mon.sp.rarity].label}</span>` +
       (mon.boosted && weather ? `<span class="boostline">${weatherIcon()} Усилен погодой: +25% опыта и пыли</span>` : '') +
       (cardBonus(mon.sp.type) ? `<span class="boostline">🃏 Карточки: +${Math.round(cardBonus(mon.sp.type) * 100)}% к поимке</span>` : '');
     const body = $('encBody'); body.className = 'body';
-    const anim = S.settings.sprites === 'anim';
+    const anim = spriteMode() === 'anim';
     body.innerHTML = anim
       ? `<img class="anim" src="${spriteUrl(mon.sp.id, mon.shiny, 'anim')}" alt="" draggable="false">`
       : `<img class="art" src="${artUrl(mon.sp.id, mon.shiny)}" alt="" draggable="false">`;
@@ -938,7 +1092,7 @@
   function endEncounter() {
     if (!enc) return;
     cancelAnimationFrame(enc.raf); enc = null;
-    $('encounter').classList.remove('on');
+    $('encounter').classList.remove('on', 'ar'); camOff();
     refreshWorld();
   }
   $('encRun').addEventListener('click', () => {
@@ -1025,7 +1179,7 @@
       if (curve) { bonus *= 1.7; bxp += 20; label += ' 🌀'; S.curveballs++; quest('curve'); }
       enc.bonusXp = Math.max(enc.bonusXp || 0, bxp);
       const chance = Math.min(0.97, RARITY[enc.mon.sp.rarity].catchRate * ballDef(enc.ball).mult * bonus * (enc.berry ? 1.5 : 1)
-        * (enc.raid ? 2 : 1) * (1 + enc.fails * 0.08) * (1 + cardBonus(enc.mon.sp.type)));
+        * (enc.raid ? 2 : 1) * (1 + enc.fails * 0.08) * (1 + cardBonus(enc.mon.sp.type) + pct('catch')));
       const success = Math.random() < chance;
       enc.berry = false;
       toast(label, 800);
@@ -1063,10 +1217,13 @@
       S.totalCaught++; S.lastCatchDay = day;
       if (mon.shiny) S.shinyCaught++;
       const candy = 3 + (sp.rarity >= 4 ? 7 : 0) + (enc.raid ? 5 : 0);
-      const dust = Math.round((100 + sp.rarity * 50 + (enc.raid ? 1000 : 0)) * boost);
+      const dust = dustGain((100 + sp.rarity * 50 + (enc.raid ? 1000 : 0)) * boost);
       S.candy[fam] = (S.candy[fam] || 0) + candy;
       S.stardust += dust;
-      S.mons.unshift({ uid: S.uid++, sp: sp.id, lvl: mon.lvl, iv: mon.iv, cp: calcCp(sp.id, mon.lvl, mon.iv), t: Date.now(), shiny: mon.shiny, fav: false });
+      S.mons.unshift({ uid: S.uid++, sp: sp.id, lvl: mon.lvl, iv: mon.iv, cp: calcCp(sp.id, mon.lvl, mon.iv), t: Date.now(), shiny: mon.shiny, fav: false, sz: mon.sz, g: mon.g });
+      if (sizeTag(mon.sz) === 'XL') S.xlCaught++; else if (sizeTag(mon.sz) === 'XS') S.xsCaught++;
+      journalDay().c.push(sp.id);
+      passXp(PASS_POINTS.catch + (enc.bonusXp >= 100 ? PASS_POINTS.excellent : 0));
       if (S.mons.length > 1000) S.mons.length = 1000;
       if (mon.id) S.gone[mon.id] = Math.floor(Date.now() / WINDOW_MS);
       let xp = RARITY[sp.rarity].xp + (enc.bonusXp || 0) + (first ? 500 : 0) + (mon.shiny ? 500 : 0) + (firstToday ? 1000 : 0);
@@ -1076,20 +1233,21 @@
       burst(bx, by, ['⭐', '✨', '💫'], 16);
       quest('catch'); quest('type', 1, sp.type);
       let cardLine = null;
-      if (Math.random() < 0.05 * (enc.bonusXp >= 100 ? 2 : 1)) {
+      if (Math.random() < 0.05 * (enc.bonusXp >= 100 ? 2 : 1) * (1 + pct('card'))) {
         const shinyCard = Math.random() < (mon.shiny ? 0.5 : CARD_SHINY_CHANCE);
         cardLine = `🃏 Карточка${shinyCard ? ' ✨' : ''}${addCard(sp.id, shinyCard) ? ' · новая!' : ''}`;
         save(); checkMedals();
       }
       setTimeout(() => {
         cancelAnimationFrame(enc.raf); enc = null;
-        $('encounter').classList.remove('on');
+        $('encounter').classList.remove('on', 'ar'); camOff();
         const gained = addXp(xp);
         const lines = [`+${gained} XP`, `🍬 +${candy}`, `💫 +${dust}`];
         if (first) lines.push('🆕 Новый вид!');
         if (firstToday) lines.push('☀️ Первая поимка дня');
+        if (sizeTag(mon.sz)) lines.push(sizeTag(mon.sz) === 'XL' ? '🐘 XL — великан!' : '🐜 XS — кроха!');
         if (cardLine) lines.push(cardLine);
-        popup(`<img class="art" src="${artUrl(sp.id, mon.shiny)}" alt=""><h2>${mon.shiny ? '✨ ' : ''}${sp.name} пойман!</h2>
+        popup(`<img class="art" src="${artUrl(sp.id, mon.shiny)}" alt=""><h2>${mon.shiny ? '✨ ' : ''}${sp.name}${genderIcon(mon.g)} пойман!</h2>
           <div>${typeChip(sp.type)} <b>CP ${mon.cp}</b></div>${rewardsHtml(lines)}
           <button class="btn" data-ok>Отлично!</button>`);
         refreshWorld();
@@ -1122,7 +1280,7 @@
   }
   function tryTrainer(t) {
     const d = dist(pos, t.ll);
-    if (d > STOP_RADIUS) { SFX.tap(); return toast(`${t.look} Тренер ${t.name} ждёт<br><small>${fmtDist(d)} — подойди ближе</small>`); }
+    if (d > stopRadius()) { SFX.tap(); return toast(`${t.look} Тренер ${t.name} ждёт<br><small>${fmtDist(d)} — подойди ближе</small>`); }
     if (!S.mons.length) return toast('Сначала поймай хотя бы одного покемона');
     const r = rng(t.seed), lvl = playerLvl();
     const pool = SPECIES.filter((s) => s.rarity <= 3);
@@ -1136,7 +1294,7 @@
     });
   }
   function raidMenu(s, ev) {
-    const d = dist(pos, s.ll), raid = s.raid, near = d <= STOP_RADIUS;
+    const d = dist(pos, s.ll), raid = s.raid, near = d <= stopRadius();
     const used = S.stops[s.id] && Date.now() - S.stops[s.id] < STOP_COOLDOWN;
     const freePass = S.freePassDay !== today();
     const passes = S.items.pass + (freePass ? 1 : 0);
@@ -1147,7 +1305,7 @@
       ${team.length ? `<div class="team-pick">${team.map((m) => `<div><img src="${pixelUrl(m.sp, m.shiny)}" alt="">CP ${m.cp}</div>`).join('')}</div>` : ''}
       <div class="actions" style="flex-direction:column">
         <button class="btn red" id="goRaid" ${near && passes && team.length ? '' : 'disabled'}>⚔️ Сразиться (🎟️ ${freePass ? 'бесплатно' : S.items.pass})</button>
-        ${!used ? `<button class="btn blue" id="spinRaidStop" ${near ? '' : 'disabled'}>🎁 Покрутить покестоп</button>` : ''}
+        <button class="btn blue" id="spinRaidStop">🎁 Открыть покестоп «${s.name}»</button>
         <button class="btn ghost" data-ok>Закрыть</button></div>`, (box) => {
       box.querySelector('#goRaid').onclick = () => {
         if (freePass) S.freePassDay = today(); else S.items.pass--;
@@ -1156,7 +1314,7 @@
         startBattle({ kind: 'raid', raid, stop: s, enemy: [{ sp: boss, lvl, iv: { a: 15, d: 15, h: 15 }, shiny: false, hpMult: { 3: 6, 4: 10, 5: 16 }[raid.tier] }], team });
       };
       const sp = box.querySelector('#spinRaidStop');
-      if (sp) sp.onclick = () => { closePopup(); useStop(s, ev); };
+      if (sp) sp.onclick = () => { closePopup(); openStop(s); };
     });
   }
 
@@ -1230,7 +1388,8 @@
     if (!charged && now < battle.fastCd) return;
     if (charged && m.energy < 50) return;
     const [fast, charge] = MOVES[m.sp.type];
-    const { dmg, eff } = damage(m, e, charged ? 60 : 7, m.sp.type);
+    const { dmg: raw, eff } = damage(m, e, charged ? 60 : 7, m.sp.type);
+    const dmg = Math.round(raw * (1 + pct('damage')));
     if (charged) { m.energy -= 50; flash(); SFX.charge(); vibrate([30, 30, 60]); }
     else { battle.fastCd = now + 330; m.energy = Math.min(100, m.energy + 9); SFX.attack(); }
     e.hp = Math.max(0, e.hp - dmg);
@@ -1315,7 +1474,9 @@
       SFX.level(); vibrate([60, 40, 60, 40, 120]);
       if (cfg.kind === 'trainer') {
         S.beaten[cfg.trainer.id] = Date.now(); S.trainerWins++;
-        const parts = grant({ dust: 500 + playerLvl() * 20, coins: 10, great: 2, berry: Math.random() < 0.5 ? 2 : 0, pass: Math.random() < 0.15 ? 1 : 0, pack: Math.random() < 0.25 ? 1 : 0 });
+        const parts = grant({ dust: dustGain(500 + playerLvl() * 20), coins: 10, great: 2, berry: Math.random() < 0.5 ? 2 : 0, pass: Math.random() < 0.15 ? 1 : 0, pack: Math.random() < 0.25 ? 1 : 0,
+          gear: Math.random() < 0.1 ? randomGear(Math.random, 3).id : 0 });
+        passXp(PASS_POINTS.trainer);
         const xp = addXp(600);
         quest('battle'); checkMedals(); refreshWorld();
         popup(`<div class="big">🏆</div><h2>Победа!</h2><p>${cfg.trainer.look} ${cfg.trainer.name}: «Ты силён! Держи награду.»</p>
@@ -1323,7 +1484,9 @@
       } else {
         const raid = cfg.raid, left = Math.max(0, b.limit - (Date.now() - b.start));
         S.raidsDone[raid.id] = Date.now(); S.raidWins++;
-        const parts = grant({ dust: 1000 * raid.tier, coins: 10 * raid.tier, ultra: raid.tier - 1, berry: 3, pack: raid.tier === 5 ? 2 : 1 });
+        const parts = grant({ dust: dustGain(1000 * raid.tier), coins: 10 * raid.tier, ultra: raid.tier - 1, berry: 3, pack: raid.tier === 5 ? 2 : 1,
+          gear: Math.random() < 0.25 ? randomGear(Math.random, 4).id : 0 });
+        passXp(PASS_POINTS.raid);
         const xp = addXp({ 3: 1500, 4: 3000, 5: 6000 }[raid.tier]);
         const premier = 5 + Math.floor(left / 20000);
         checkMedals(); refreshWorld();
@@ -1331,7 +1494,7 @@
           ${rewardsHtml([`+${xp} XP`].concat(parts))}<button class="btn red" data-ok id="toCatch">Поймать ${raid.sp.name}!</button>`, (box) => {
           box.querySelector('#toCatch').addEventListener('click', () => {
             const r = Math.random, iv = randIv(r, 10), lvl = 20;
-            const mon = { sp: raid.sp, lvl, iv, cp: calcCp(raid.sp.id, lvl, iv), shiny: r() < SHINY_CHANCE * 3, boosted: false };
+            const mon = Object.assign({ sp: raid.sp, lvl, iv, cp: calcCp(raid.sp.id, lvl, iv), shiny: r() < shinyChance() * 3, boosted: false }, sizeGender(raid.sp.id, r));
             setTimeout(() => startEncounter(mon, { premier }), 200);
           });
         });
@@ -1409,7 +1572,7 @@
     const s = SP(m.sp), fam = family(m.sp), candy = S.candy[fam] || 0, evo = EVOLVES[m.sp];
     const col = TYPE_COLORS[s.type] || '#555', b = baseStats(m.sp), stars = ivStars(m.iv), cost = powerCost(m.lvl);
     const canPower = m.lvl < maxLvl() && S.stardust >= cost.dust && candy >= cost.candy;
-    const inTeam = S.team.includes(uid), isBuddy = S.buddy && S.buddy.uid === uid;
+    const inTeam = S.team.includes(uid), isBuddy = S.buddy && S.buddy.uid === uid, hw = heightWeight(m.sp, m.sz || 1);
     const statRow = (label, base, iv, max) => `<div class="statrow"><span>${label}</span><div class="bar"><i style="width:${base / max * 100}%"></i><b style="width:${iv / max * 100}%"></b></div><em>${base + iv}</em></div>`;
     const appraisal = ['Ничего особенного', 'Неплохой покемон', 'Хороший покемон', 'Отличный покемон!', 'Идеальный покемон! 💯'][stars];
     const sheet = $('monSheet');
@@ -1422,12 +1585,15 @@
       <div class="md-body">
         <div class="md-cp">CP <b>${m.cp}</b> · ур. ${m.lvl}</div>
         <div class="lvlbar"><i style="width:${m.lvl / 40 * 100}%"></i></div>
-        <div class="md-name">${m.shiny ? '✨ ' : ''}${s.name}${isBuddy ? ' 🐾' : ''}</div>
+        <div class="md-name">${m.shiny ? '✨ ' : ''}${s.name}${genderIcon(m.g)}${isBuddy ? ' 🐾' : ''}${sizeTag(m.sz) ? ` <span class="sz">${sizeTag(m.sz)}</span>` : ''}</div>
         <div class="md-types">${typeChip(s.type)} <span style="color:${RARITY[s.rarity].color};font-size:13px">● ${RARITY[s.rarity].label}</span></div>
         <div class="md-grid">
           <div><b>🍬 ${candy}</b><span>конфет</span></div>
           <div><b>💫 ${fmtNum(S.stardust)}</b><span>пыли</span></div>
           <div><b>${new Date(m.t).toLocaleDateString('ru-RU')}</b><span>${m.hatched ? 'вылупился' : 'пойман'}</span></div>
+          <div><b>${hw.h} м</b><span>рост</span></div>
+          <div><b>${hw.w} кг</b><span>вес</span></div>
+          <div><b>${m.g === 'f' ? '♀ самка' : m.g === 'm' ? '♂ самец' : '—'}</b><span>пол</span></div>
         </div>
         <div class="appraise"><div class="stars">${'★'.repeat(stars)}${'☆'.repeat(3 - Math.min(3, stars))}</div>${appraisal} · ${ivPct(m.iv)}%</div>
         ${statRow('Атака', b.atk, m.iv.a, 320)}${statRow('Защита', b.def, m.iv.d, 320)}${statRow('Здоровье', b.sta, m.iv.h, 320)}
@@ -1440,6 +1606,7 @@
             <button class="btn ghost" id="mdTeam">${inTeam ? '🛡️ Из команды' : `🛡️ В команду (${S.team.length}/6)`}</button>
             <button class="btn ghost" id="mdBuddy" ${isBuddy ? 'disabled' : ''}>🐾 ${isBuddy ? 'Напарник' : 'Напарником'}</button>
           </div>
+          <button class="btn ghost" id="mdPhoto">📸 Сфотографироваться</button>
           <button class="btn ghost" id="mdFav">${m.fav ? '💔 Убрать из избранного' : '❤️ В избранное'}</button>
           <button class="btn red" id="mdTransfer">👋 Отпустить (+1 🍬)</button>
         </div>
@@ -1447,6 +1614,7 @@
     sheet.classList.add('on'); sheet.scrollTop = 0;
     $('mdClose').onclick = () => { sheet.classList.remove('on'); renderDex(); };
     $('mdFav').onclick = () => { m.fav = !m.fav; save(); SFX.tap(); openMon(uid); };
+    $('mdPhoto').onclick = () => openPhoto({ spId: m.sp, shiny: m.shiny, cp: m.cp, g: m.g });
     $('mdTeam').onclick = () => {
       if (inTeam) S.team = S.team.filter((x) => x !== uid);
       else if (S.team.length >= 6) return toast('В команде уже 6 покемонов');
@@ -1487,7 +1655,7 @@
         burst(r.left + r.width / 2, r.top + r.height / 2, ['✨', '⭐', '💫'], 18);
         m.sp = to.id; m.cp = calcCp(m.sp, m.lvl, m.iv);
         S.caught[to.id] = (S.caught[to.id] || 0) + 1; S.seen[to.id] = true; S.evolved++; save();
-        quest('evolve');
+        quest('evolve'); passXp(PASS_POINTS.evolve);
         toast(`🎉 ${s.name} эволюционировал в ${to.name}!`, 2400);
         addXp(500); renderBuddyMarker();
         openMon(uid);
@@ -1664,6 +1832,7 @@
     const r = Math.random;
     const cards = [rollCard(r), rollCard(r), rollCard(r), rollCard(r), rollCard(r, true)];
     cards.forEach((c) => { c.isNew = addCard(c.id, c.shiny); });
+    passXp(PASS_POINTS.pack);
     save(); renderHud();
     const view = $('packView');
     view.innerHTML = `<div class="pack-stage"><div class="pack" id="packFoil"><span>Покемон GO</span><b>🎴</b><small>5 карточек</small></div></div>
@@ -1710,6 +1879,361 @@
     const more = view.querySelector('#packMore'); if (more) more.onclick = () => openPack();
   }
 
+  // ================= GEAR =================
+  function addGear(id) {
+    const g = GEAR_BY_ID[id];
+    if (S.gear.owned[id]) { S.coins += GEAR_RARITY[g.rarity].sell; save(); return false; }
+    S.gear.owned[id] = true; save();
+    return true;
+  }
+  function toggleGear(id) {
+    const g = GEAR_BY_ID[id];
+    if (S.gear.equip[g.slot] === id) delete S.gear.equip[g.slot]; else S.gear.equip[g.slot] = id;
+    save(); renderAvatar(); updateRange(); rebuildMarkers();
+  }
+  function gearShopOffers() {
+    const d = today();
+    if (!S.gearShop || S.gearShop.day !== d) {
+      const r = rng(hash('gearshop:' + d)), pool = GEAR.filter((g) => !g.exclusive), ids = [];
+      while (ids.length < 3) { const g = pick(pool, r); if (!ids.includes(g.id)) ids.push(g.id); }
+      S.gearShop = { day: d, ids }; save();
+    }
+    return S.gearShop.ids.map((id) => GEAR_BY_ID[id]);
+  }
+  const gearRow = (g, right) => `<div class="row gear-row"><div class="ic">${g.icon}</div><div class="grow"><b style="color:${GEAR_RARITY[g.rarity].color}">${g.name}</b>
+    <small>${GEAR_SLOTS[g.slot].name} · ${GEAR_RARITY[g.rarity].name}${g.exclusive ? ' · эксклюзив' : ''}<br>${bonusText(g.bonus)}</small></div>${right}</div>`;
+  function renderGearTab() {
+    const owned = GEAR.filter((g) => S.gear.owned[g.id]);
+    const totals = Object.keys(GEAR_STATS).filter((k) => bonus(k)).map((k) => `<span>+${bonus(k)}${GEAR_STATS[k].unit} ${GEAR_STATS[k].label}</span>`);
+    return `<div class="gear-hero">
+        <div class="gear-avatar">${avatarHtml(true)}<b>${esc(S.trainer.name || 'Тренер')}</b></div>
+        <div class="gear-slots">${Object.keys(GEAR_SLOTS).map((slot) => {
+          const g = GEAR_BY_ID[S.gear.equip[slot]];
+          return `<div class="gslot ${g ? 'on' : ''}" style="${g ? `--rc:${GEAR_RARITY[g.rarity].color}` : ''}" ${g ? `data-gear="${g.id}"` : ''}>
+            <span>${g ? g.icon : GEAR_SLOTS[slot].icon}</span><small>${g ? g.name : GEAR_SLOTS[slot].name}</small></div>`;
+        }).join('')}</div>
+      </div>
+      <div class="rewards bonus-sum">${totals.length ? totals.join('') : '<span>Надень снаряжение, чтобы получить бонусы</span>'}</div>
+      <h3>Снаряжение · ${owned.length}/${GEAR.length}</h3>
+      <div class="list">${owned.map((g) => gearRow(g, `<button class="btn sm ${S.gear.equip[g.slot] === g.id ? 'ghost' : ''}" data-gear="${g.id}">${S.gear.equip[g.slot] === g.id ? 'Снять' : 'Надеть'}</button>`)).join('')}</div>
+      <p style="color:var(--muted);font-size:13px">Новое снаряжение: боевой пропуск, магазин (каждый день новое), рейды, тренеры и редкие находки на покестопах. Повторы превращаются в монеты.</p>`;
+  }
+
+  // ================= BATTLE PASS =================
+  const seasonIndex = () => Math.max(1, Math.floor((Date.now() - PASS_EPOCH) / (PASS_DAYS * 864e5)) + 1);
+  const seasonEnds = () => PASS_EPOCH + seasonIndex() * PASS_DAYS * 864e5;
+  const seasonName = (n) => `Сезон ${n}: ${PASS_NAMES[(n - 1) % PASS_NAMES.length]}`;
+  function ensurePass() {
+    const n = seasonIndex();
+    if (!S.pass || S.pass.season !== n) { S.pass = { season: n, xp: 0, m: 0, premium: false, claimed: { free: {}, prem: {} } }; save(); }
+  }
+  const passTier = () => Math.min(PASS_TIERS, Math.floor(S.pass.xp / PASS_XP));
+  function passXp(n) {
+    ensurePass();
+    const before = passTier(); S.pass.xp += n; save();
+    const after = passTier();
+    if (after > before) setTimeout(() => { toast(`🎖️ Боевой пропуск: уровень ${after}!`, 1800); SFX.coin(); }, 900);
+    renderPassDot();
+  }
+  function passClaimable() {
+    ensurePass();
+    let n = 0;
+    for (let t = 1; t <= passTier(); t++) { if (!S.pass.claimed.free[t]) n++; if (S.pass.premium && !S.pass.claimed.prem[t]) n++; }
+    return n;
+  }
+  function renderPassDot() { const n = passClaimable(); $('passDot').textContent = n; $('passDot').classList.toggle('on', n > 0); }
+  function rewardCell(rew) { return Object.keys(rew).filter((k) => rew[k]).map((k) => `<span>${rewardLabel(k, rew[k])}</span>`).join(''); }
+  function claimPass(t, track) {
+    if (t > passTier() || S.pass.claimed[track][t] || (track === 'prem' && !S.pass.premium)) return [];
+    S.pass.claimed[track][t] = true;
+    return grant(PASS_REWARDS[t - 1][track]);
+  }
+  function renderPass() {
+    ensurePass();
+    const p = S.pass, tier = passTier(), left = Math.max(0, seasonEnds() - Date.now()), days = Math.ceil(left / 864e5);
+    const into = tier >= PASS_TIERS ? PASS_XP : p.xp % PASS_XP, claimable = passClaimable();
+    $('passBody').innerHTML = `
+      <div class="pass-hero">
+        <div class="pass-title">🎖️ ${seasonName(p.season)}</div>
+        <small>Осталось ${days} ${plural(days, 'день', 'дня', 'дней')} · потом начнётся новый сезон</small>
+        <div class="pass-lvl"><b>${tier}</b><span>/ ${PASS_TIERS}</span></div>
+        <div class="xpbar"><i style="width:${into / PASS_XP * 100}%"></i></div>
+        <small>${tier >= PASS_TIERS ? 'Пропуск пройден! 🏆' : `${fmtNum(into)} / ${fmtNum(PASS_XP)} очков до уровня ${tier + 1}`}</small>
+        <div class="actions" style="margin-top:12px">
+          ${p.premium ? '<span class="pass-prem">⭐ Премиум активен</span>' : `<button class="btn" id="buyPrem" ${S.coins >= PASS_PRICE ? '' : 'disabled'}>⭐ Премиум · 🪙 ${PASS_PRICE}</button>`}
+          ${claimable ? `<button class="btn blue" id="claimAll">Забрать всё (${claimable})</button>` : ''}
+        </div>
+      </div>
+      <p class="pass-how">Очки пропуска: поимка +${PASS_POINTS.catch} (отличный бросок ещё +${PASS_POINTS.excellent}) · покестоп +${PASS_POINTS.spin} · 1 км +${PASS_POINTS.km} · яйцо +${PASS_POINTS.hatch} · тренер +${PASS_POINTS.trainer} · рейд +${PASS_POINTS.raid} · задание +${PASS_POINTS.quest} · эволюция +${PASS_POINTS.evolve}</p>
+      <div class="pt-head"><span>Бесплатно</span><span></span><span>Премиум ⭐</span></div>
+      <div class="pt-track">${PASS_REWARDS.map((r, i) => {
+        const t = i + 1, reached = t <= tier;
+        const cell = (track) => {
+          const claimed = p.claimed[track][t], locked = track === 'prem' && !p.premium;
+          const state = claimed ? 'claimed' : locked ? 'locked' : reached ? 'ready' : '';
+          return `<div class="pt-cell ${track} ${state}" ${state === 'ready' ? `data-pclaim="${track}:${t}"` : ''}>${rewardCell(r[track])}
+            ${claimed ? '<i>✓</i>' : locked ? '<i>🔒</i>' : reached ? '<em>Забрать</em>' : ''}</div>`;
+        };
+        return `<div class="pt-row ${reached ? 'reached' : ''}">${cell('free')}<div class="pt-num">${t}</div>${cell('prem')}</div>`;
+      }).join('')}</div>`;
+  }
+  $('passBody').addEventListener('click', (e) => {
+    if (e.target.closest('#buyPrem')) {
+      if (S.coins < PASS_PRICE || S.pass.premium) return;
+      S.coins -= PASS_PRICE; S.pass.premium = true; save(); SFX.level(); renderHud();
+      const r = e.target.getBoundingClientRect(); burst(r.left + r.width / 2, r.top, ['⭐', '✨', '🎖️'], 16);
+      toast('⭐ Премиум-пропуск открыт!'); renderPassDot(); return renderPass();
+    }
+    let parts = [];
+    if (e.target.closest('#claimAll')) {
+      for (let t = 1; t <= passTier(); t++) parts = parts.concat(claimPass(t, 'free'), claimPass(t, 'prem'));
+    } else {
+      const c = e.target.closest('[data-pclaim]'); if (!c) return;
+      const [track, t] = c.dataset.pclaim.split(':');
+      parts = claimPass(+t, track);
+      const r = c.getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 2, ['🎁', '✨'], 10);
+    }
+    if (!parts.length) return;
+    save(); SFX.catch(); renderPassDot(); renderPass();
+    popup(`<div class="big">🎖️</div><h2>Награды пропуска</h2>${rewardsHtml(parts)}<button class="btn" data-ok>Отлично!</button>`);
+  });
+
+  // ================= WALK JOURNAL =================
+  function journalDay(d = today()) {
+    if (!S.journal[d]) {
+      S.journal[d] = { m: 0, c: [], s: 0, h: 0, r: [] };
+      const keys = Object.keys(S.journal).sort();
+      while (keys.length > 14) delete S.journal[keys.shift()];
+    }
+    return S.journal[d];
+  }
+  function journalRoute(p) {
+    const j = journalDay(), last = j.r[j.r.length - 1];
+    if ((!last || dist(last, p) > 25) && j.r.length < 800) j.r.push([+p[0].toFixed(5), +p[1].toFixed(5)]);
+  }
+  let journalSel = null;
+  function lastDays(n) { return Array.from({ length: n }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (n - 1 - i)); return d.toLocaleDateString('sv'); }); }
+  function routeSvg(r) {
+    if (r.length < 2) return '<div class="empty-note">Маршрут появится, когда ты пройдёшь хотя бы 50 м</div>';
+    const lat0 = r[0][0] * Math.PI / 180;
+    const pts = r.map(([la, lo]) => [lo * Math.cos(lat0), -la]);
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const W = 340, H = 220, pad = 16, k = Math.min((W - 2 * pad) / Math.max(1e-9, maxX - minX), (H - 2 * pad) / Math.max(1e-9, maxY - minY));
+    const ox = (W - (maxX - minX) * k) / 2, oy = (H - (maxY - minY) * k) / 2;
+    const P = pts.map(([x, y]) => [(x - minX) * k + ox, (y - minY) * k + oy]);
+    const d = P.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    const [sx, sy] = P[0], [ex, ey] = P[P.length - 1];
+    return `<svg class="route" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+      <path d="${d}" fill="none" stroke="rgba(61,125,202,.35)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="${d}" fill="none" stroke="#5b9cf0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="${sx}" cy="${sy}" r="7" fill="#30a46c" stroke="#fff" stroke-width="2"/><circle cx="${ex}" cy="${ey}" r="7" fill="#e5484d" stroke="#fff" stroke-width="2"/></svg>`;
+  }
+  function renderJournal() {
+    const days = lastDays(7);
+    if (!journalSel || !days.includes(journalSel)) journalSel = days[6];
+    const data = days.map((d) => S.journal[d] || { m: 0, c: [], s: 0, h: 0, r: [] });
+    const maxKm = Math.max(1, ...data.map((x) => x.m / 1000));
+    const wk = data.reduce((a, x) => ({ m: a.m + x.m, c: a.c + x.c.length, s: a.s + x.s, h: a.h + x.h }), { m: 0, c: 0, s: 0, h: 0 });
+    const j = S.journal[journalSel] || { m: 0, c: [], s: 0, h: 0, r: [] };
+    const wd = (d) => new Date(d + 'T12:00').toLocaleDateString('ru-RU', { weekday: 'short' });
+    const uniq = [...new Set(j.c)];
+    $('journalBody').innerHTML = `
+      <h3 style="margin-top:0">За неделю</h3>
+      <div class="stats"><div><b>${(wk.m / 1000).toFixed(1)}</b><span>км</span></div><div><b>${wk.c}</b><span>поймано</span></div><div><b>${wk.s}</b><span>покестопов</span></div></div>
+      <div class="week">${days.map((d, i) => `<button class="wk-day ${d === journalSel ? 'on' : ''}" data-day="${d}">
+        <i style="height:${Math.max(4, data[i].m / 1000 / maxKm * 100)}%"></i><b>${(data[i].m / 1000).toFixed(1)}</b><small>${i === 6 ? 'сегодня' : wd(d)}</small></button>`).join('')}</div>
+      <h3>${journalSel === today() ? 'Сегодня' : new Date(journalSel + 'T12:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' })}</h3>
+      <div class="stats">
+        <div><b>${(j.m / 1000).toFixed(2)}</b><span>км пройдено</span></div>
+        <div><b>${j.c.length}</b><span>поймано</span></div>
+        <div><b>${j.s} · ${j.h}</b><span>покестопов · яиц</span></div>
+      </div>
+      <div class="route-box">${routeSvg(j.r)}</div>
+      ${uniq.length ? `<h3>Пойманные покемоны</h3><div class="j-mons">${uniq.slice(0, 60).map((id) => `<img src="${pixelUrl(id)}" alt="" title="${SP(id).name}">`).join('')}</div>` : ''}`;
+  }
+  $('journalBody').addEventListener('click', (e) => { const b = e.target.closest('[data-day]'); if (b) { journalSel = b.dataset.day; SFX.tap(); renderJournal(); } });
+
+  // ================= TRAINER =================
+  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function avatarHtml(big) {
+    const t = S.trainer, hat = S.gear.equip.head ? GEAR_BY_ID[S.gear.equip.head].icon : '', team = t.team && TEAMS[t.team];
+    return `<div class="trn ${big ? 'big' : ''}" style="--c:${t.color}">${hat ? `<div class="trn-hat">${hat}</div>` : ''}<div class="trn-head">${t.look}</div>
+      ${team ? `<div class="trn-team" style="background:${team.color}">${team.icon}</div>` : ''}</div>`;
+  }
+  function renderAvatar() {
+    avatarEl.innerHTML = avatarHtml(false) + `<div class="trn-name">${esc(S.trainer.name || 'Тренер')}</div><div class="ava-shadow"></div>`;
+    renderHud();
+  }
+  function trainerSetup(first) {
+    const t = { ...S.trainer };
+    const html = () => `<h2>${first ? 'Создай тренера' : 'Твой тренер'}</h2>
+      <div class="tr-preview" id="trPreview"></div>
+      <input class="tr-name" id="trName" maxlength="16" placeholder="Имя тренера" value="${esc(t.name)}">
+      <div class="tr-grid">${AVATAR_LOOKS.map((l) => `<button class="${l === t.look ? 'on' : ''}" data-look="${l}">${l}</button>`).join('')}</div>
+      <div class="tr-colors">${AVATAR_COLORS.map((c) => `<button class="${c === t.color ? 'on' : ''}" data-color="${c}" style="background:${c}"></button>`).join('')}</div>
+      <div class="actions"><button class="btn" id="trSave">${first ? 'Начать игру!' : 'Сохранить'}</button>${first ? '' : '<button class="btn ghost" data-ok>Отмена</button>'}</div>`;
+    popup(html(), (box) => {
+      const preview = () => {
+        const keep = S.trainer; S.trainer = t; box.querySelector('#trPreview').innerHTML = avatarHtml(true); S.trainer = keep;
+        box.querySelector('#trSave').disabled = !t.name.trim();
+      };
+      preview();
+      box.querySelector('#trName').addEventListener('input', (e) => { t.name = e.target.value; preview(); });
+      box.addEventListener('click', (e) => {
+        const l = e.target.closest('[data-look]'), c = e.target.closest('[data-color]');
+        if (l) { t.look = l.dataset.look; box.querySelectorAll('[data-look]').forEach((b) => b.classList.toggle('on', b === l)); preview(); }
+        if (c) { t.color = c.dataset.color; box.querySelectorAll('[data-color]').forEach((b) => b.classList.toggle('on', b === c)); preview(); }
+        if (e.target.id === 'trSave' && t.name.trim()) {
+          S.trainer = Object.assign(S.trainer, { name: t.name.trim().slice(0, 16), look: t.look, color: t.color });
+          save(); renderAvatar(); closePopup(); SFX.spin();
+          if ($('profile').classList.contains('on')) renderProfile();
+        }
+      });
+    });
+  }
+  function teamPicker() {
+    const had = S.trainer.team;
+    popup(`<h2>${had ? 'Сменить команду' : 'Выбери команду'}</h2><p>${had ? `Смена стоит 🪙 1000.` : 'Команда даёт постоянный бонус. Выбирай с умом!'}</p>
+      <div class="teams">${Object.keys(TEAMS).map((k) => { const tm = TEAMS[k]; return `<button class="team-btn" data-team="${k}" style="--tc:${tm.color}" ${k === had ? 'disabled' : ''}>
+        <b>${tm.icon} ${tm.name}</b><small>${tm.desc}</small></button>`; }).join('')}</div>
+      <button class="btn ghost" data-ok>${had ? 'Отмена' : 'Позже'}</button>`, (box) => {
+      box.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-team]'); if (!b) return;
+        if (had) { if (S.coins < 1000) return toast('Нужно 🪙 1000'); S.coins -= 1000; }
+        S.trainer.team = b.dataset.team; save(); renderAvatar(); closePopup();
+        const tm = TEAMS[S.trainer.team]; SFX.level();
+        toast(`${tm.icon} Добро пожаловать в команду ${tm.name}!<br><small>${tm.desc}</small>`, 2400);
+        if ($('profile').classList.contains('on')) renderProfile();
+      });
+    });
+  }
+
+  // ================= CAMERA: AR & PHOTOS =================
+  let camStream = null;
+  async function camOn(video) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('nocam');
+    if (!camStream) camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    video.srcObject = camStream;
+    await video.play().catch(() => {});
+  }
+  function camOff() {
+    if (camStream) camStream.getTracks().forEach((t) => t.stop());
+    camStream = null;
+    document.querySelectorAll('video').forEach((v) => { v.srcObject = null; });
+  }
+  async function applyEncAr() {
+    const on = S.settings.ar;
+    $('encAr').classList.toggle('on', on);
+    if (!on) { $('encounter').classList.remove('ar'); if (!$('photoView').classList.contains('on')) camOff(); return; }
+    try { await camOn($('encVideo')); $('encounter').classList.add('ar'); }
+    catch (e) { S.settings.ar = false; save(); $('encAr').classList.remove('on'); toast('📷 Камера недоступна<br><small>Разреши доступ к камере в настройках браузера</small>', 2200); }
+  }
+  $('encAr').addEventListener('click', () => { S.settings.ar = !S.settings.ar; save(); SFX.tap(); applyEncAr(); });
+  $('encPhoto').addEventListener('click', () => { if (enc) openPhoto({ spId: enc.mon.sp.id, shiny: enc.mon.shiny, cp: enc.mon.cp, g: enc.mon.g }); });
+
+  let photo = null;
+  async function openPhoto(o) {
+    photo = o;
+    const view = $('photoView');
+    view.innerHTML = `<video id="phVideo" playsinline muted autoplay></video><div class="ph-bg"></div>
+      <img id="phMon" crossorigin="anonymous" src="${artUrl(o.spId, o.shiny)}" alt="" draggable="false">
+      <button class="close ph-close" id="phClose">✕</button>
+      <div class="ph-bar"><input type="range" id="phSize" min="120" max="420" value="240"><button class="ph-shot" id="phShot" title="Снять"></button></div>
+      <div class="ph-tip">Двигай покемона пальцем, размер — ползунком</div>`;
+    view.classList.add('on');
+    const im = $('phMon');
+    const place = (w) => { im.style.width = im.style.height = w + 'px'; };
+    place(240); im.style.left = (view.clientWidth / 2 - 120) + 'px'; im.style.top = (view.clientHeight * 0.55 - 120) + 'px';
+    $('phSize').oninput = (e) => {
+      const w = +e.target.value, r = im.getBoundingClientRect();
+      im.style.left = (parseFloat(im.style.left) + r.width / 2 - w / 2) + 'px'; im.style.top = (parseFloat(im.style.top) + r.height / 2 - w / 2) + 'px'; place(w);
+    };
+    let drag = null;
+    im.onpointerdown = (e) => { im.setPointerCapture(e.pointerId); drag = { x: e.clientX - parseFloat(im.style.left), y: e.clientY - parseFloat(im.style.top) }; };
+    im.onpointermove = (e) => { if (drag) { im.style.left = e.clientX - drag.x + 'px'; im.style.top = e.clientY - drag.y + 'px'; } };
+    im.onpointerup = () => { drag = null; };
+    $('phClose').onclick = closePhoto;
+    $('phShot').onclick = shoot;
+    try { await camOn($('phVideo')); view.classList.add('cam'); }
+    catch (e) { view.classList.remove('cam'); toast('📷 Без камеры — фото на фоне травы', 1600); }
+  }
+  function closePhoto() {
+    $('photoView').classList.remove('on', 'cam'); $('photoView').innerHTML = ''; photo = null;
+    if (enc && S.settings.ar) applyEncAr(); else camOff();
+  }
+  async function shoot() {
+    const view = $('photoView'), W = view.clientWidth, H = view.clientHeight, k = Math.min(2, window.devicePixelRatio || 1);
+    const c = document.createElement('canvas'); c.width = W * k; c.height = H * k;
+    const g = c.getContext('2d'); g.scale(k, k);
+    const v = $('phVideo');
+    if (view.classList.contains('cam') && v.videoWidth) {
+      const s = Math.max(W / v.videoWidth, H / v.videoHeight), vw = v.videoWidth * s, vh = v.videoHeight * s;
+      g.drawImage(v, (W - vw) / 2, (H - vh) / 2, vw, vh);
+    } else {
+      const sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#5fb7f5'); sky.addColorStop(0.55, '#bfe6ff'); sky.addColorStop(0.551, '#6fbf5a'); sky.addColorStop(1, '#3e9a36');
+      g.fillStyle = sky; g.fillRect(0, 0, W, H);
+    }
+    const im = $('phMon'), r = im.getBoundingClientRect(), vr = view.getBoundingClientRect();
+    g.drawImage(im, r.left - vr.left, r.top - vr.top, r.width, r.height);
+    const sp = SP(photo.spId);
+    g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(0, H - 46, W, 46);
+    g.fillStyle = '#fff'; g.font = '800 16px Nunito, sans-serif'; g.textBaseline = 'middle';
+    g.fillText(`${photo.shiny ? '✨ ' : ''}${sp.name}${photo.cp ? ' · CP ' + photo.cp : ''}`, 14, H - 23);
+    g.textAlign = 'right'; g.fillText(`Покемон GO · ${new Date().toLocaleDateString('ru-RU')}`, W - 14, H - 23);
+    flash(); tone(1800, 0.05, 'square', 0.05); vibrate(30);
+    let blob;
+    try { blob = await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.92)); } catch (e) { return toast('Не удалось сохранить фото'); }
+    const url = URL.createObjectURL(blob), file = new File([blob], `pokemon-${sp.name}.jpg`, { type: 'image/jpeg' });
+    const canShare = navigator.canShare && navigator.canShare({ files: [file] });
+    popup(`<h2>📸 Готово!</h2><img class="ph-result" src="${url}" alt="">
+      <div class="actions"><button class="btn" id="phSave">💾 Сохранить</button>${canShare ? '<button class="btn blue" id="phShare">📤 Поделиться</button>' : ''}<button class="btn ghost" data-ok>Ещё раз</button></div>`, (box) => {
+      box.querySelector('#phSave').onclick = () => { const a = document.createElement('a'); a.href = url; a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); toast('💾 Фото сохранено'); };
+      const sh = box.querySelector('#phShare'); if (sh) sh.onclick = () => navigator.share({ files: [file], title: 'Покемон GO' }).catch(() => {});
+    });
+  }
+
+  // ================= POCKET MODE & BATTERY SAVER =================
+  let pocket = null;
+  async function pocketOn() {
+    pocket = { lock: null, near: new Set(), lastTap: 0 };
+    markers.forEach((v, id) => { if (v.kind === 'mon' && v.close) pocket.near.add(id); });
+    try { if (navigator.wakeLock) pocket.lock = await navigator.wakeLock.request('screen'); } catch (e) {}
+    $('pocket').classList.add('on'); renderPocket(); SFX.tap();
+  }
+  function pocketOff() {
+    if (pocket && pocket.lock) pocket.lock.release().catch(() => {});
+    pocket = null; $('pocket').classList.remove('on');
+  }
+  function renderPocket(alert) {
+    if (!pocket) return;
+    const j = journalDay(), egg = S.eggs.slice().sort((a, b) => (a.km * 1000 - a.walked) - (b.km * 1000 - b.walked))[0];
+    $('pocketBody').innerHTML = `<div class="pk-title">🌙 Карманный режим</div>
+      <div class="pk-big">${(j.m / 1000).toFixed(2)} км</div><div class="pk-sub">пройдено сегодня</div>
+      ${egg ? `<div class="pk-sub">🥚 ${(egg.walked / 1000).toFixed(2)} / ${egg.km} км</div>` : ''}
+      <div class="pk-alert">${alert || 'Телефон завибрирует, когда рядом появится покемон'}</div>
+      <div class="pk-exit">Дважды коснись экрана, чтобы выйти</div>`;
+  }
+  $('pocket').addEventListener('click', () => { if (!pocket) return; const now = Date.now(); if (now - pocket.lastTap < 400) pocketOff(); else pocket.lastTap = now; });
+  document.addEventListener('visibilitychange', async () => {
+    if (pocket && document.visibilityState === 'visible' && navigator.wakeLock) { try { pocket.lock = await navigator.wakeLock.request('screen'); } catch (e) {} }
+  });
+  function pocketCheck() {
+    if (!pocket) return;
+    const now = new Set(); let fresh = null;
+    markers.forEach((v, id) => { if (v.kind === 'mon' && v.close) { now.add(id); if (!pocket.near.has(id)) fresh = v.data; } });
+    pocket.near = now;
+    if (fresh) { vibrate([150, 80, 150]); SFX.appear(); renderPocket(`${fresh.shiny ? '✨ ' : ''}Рядом ${fresh.sp.name}! Достань телефон`); }
+    else renderPocket();
+  }
+  $('btnPocket').addEventListener('click', pocketOn);
+  const spriteMode = () => S.settings.saver ? 'pixel' : S.settings.sprites;
+  function applySaver() {
+    document.body.classList.toggle('saver', !!S.settings.saver);
+    try { if (map.setPixelRatio) map.setPixelRatio(S.settings.saver ? 1 : (window.devicePixelRatio || 1)); } catch (e) {}
+    renderWeather();
+  }
+
   // ================= BAG: items, eggs, shop =================
   let bagTab = 'items';
   function renderBag() {
@@ -1730,6 +2254,8 @@
         (Object.keys(S.candy).length ? '<div class="list">' + Object.keys(S.candy).sort((a, b) => a - b).map((f) =>
           `<div class="row"><img src="${pixelUrl(f)}" alt="" style="width:48px;height:48px;image-rendering:pixelated"><div class="grow"><b>Конфеты: ${SP(+f).name}</b><small>Для эволюции и усиления этой семьи</small></div><span class="cnt">🍬 ${S.candy[f]}</span></div>`).join('') + '</div>'
           : '<div class="empty-note">Лови покемонов, чтобы получать конфеты.</div>');
+    } else if (bagTab === 'gear') {
+      $('bagBody').innerHTML = renderGearTab();
     } else if (bagTab === 'eggs') {
       $('bagBody').innerHTML = `<p style="color:var(--muted)">Яйца вылупляются, пока ты гуляешь. Их дают на покестопах и за уровни. Места: ${S.eggs.length}/${MAX_EGGS}.</p>` +
         (S.eggs.length ? '<div class="list">' + S.eggs.map((e) => `<div class="row"><span class="egg k${e.km}"></span><div class="grow"><b>Яйцо ${e.km} км</b>
@@ -1739,11 +2265,21 @@
         (S.buddy ? (() => { const m = S.mons.find((x) => x.uid === S.buddy.uid); return m ? `<h3>Напарник</h3><div class="row"><img src="${pixelUrl(m.sp, m.shiny)}" alt="" style="width:56px;height:56px;image-rendering:pixelated"><div class="grow"><b>${SP(m.sp).name} 🐾</b><small>Конфета каждые ${buddyKm(m)} км</small><div class="egg-prog"><i style="width:${S.buddy.walked / (buddyKm(m) * 1000) * 100}%"></i></div></div></div>` : ''; })() : '');
     } else {
       $('bagBody').innerHTML = `<div class="wallet"><div>🪙 ${fmtNum(S.coins)}<small>монеты: за медали, бонусы дня и бои</small></div></div><div class="shop">` +
-        SHOP.map((it) => `<div class="shop-item"><div class="ic">${it.icon}</div><b>${it.title}</b><button class="btn sm" data-buy="${it.id}" ${S.coins >= it.price ? '' : 'disabled'}>🪙 ${it.price}</button></div>`).join('') + '</div>';
+        SHOP.map((it) => `<div class="shop-item"><div class="ic">${it.icon}</div><b>${it.title}</b><button class="btn sm" data-buy="${it.id}" ${S.coins >= it.price ? '' : 'disabled'}>🪙 ${it.price}</button></div>`).join('') + '</div>' +
+        `<h3>🧢 Снаряжение дня <small style="color:var(--muted);font-weight:700">· обновляется каждый день</small></h3><div class="list">${gearShopOffers().map((g) => gearRow(g,
+          S.gear.owned[g.id] ? '<span class="cnt">✓</span>' : `<button class="btn sm" data-buygear="${g.id}" ${S.coins >= GEAR_RARITY[g.rarity].price ? '' : 'disabled'}>🪙 ${GEAR_RARITY[g.rarity].price}</button>`)).join('')}</div>`;
     }
   }
   $('bagTabs').addEventListener('click', (e) => { if (e.target.dataset.tab) { bagTab = e.target.dataset.tab; SFX.tap(); renderBag(); } });
   $('bagBody').addEventListener('click', (e) => {
+    const gb = e.target.closest('[data-buygear]');
+    if (gb) {
+      const g = GEAR_BY_ID[gb.dataset.buygear], price = GEAR_RARITY[g.rarity].price;
+      if (S.coins < price || S.gear.owned[g.id]) return;
+      S.coins -= price; addGear(g.id); SFX.coin(); toast(`${g.icon} ${g.name} — твоё!<br><small>Надень во вкладке «Снаряжение»</small>`, 2000); return renderBag();
+    }
+    const ge = e.target.closest('[data-gear]');
+    if (ge) { toggleGear(ge.dataset.gear); SFX.tap(); return renderBag(); }
     const use = e.target.closest('[data-use]');
     if (use) {
       const k = use.dataset.use;
@@ -1781,7 +2317,17 @@
       return `<div class="medal t${tier}"><div class="mi">${m.icon}</div><div><b>${m.name}</b>
         <small>${(Math.floor(v * 10) / 10).toLocaleString('ru-RU')} ${m.unit}${next ? ` · до след.: ${next}` : ' · максимум!'}</small></div></div>`;
     }).join('');
+    const team = S.trainer.team && TEAMS[S.trainer.team];
     $('profileBody').innerHTML = `
+      <div class="trainer-card" style="--c:${S.trainer.color};${team ? `--tc:${team.color}` : ''}">
+        ${avatarHtml(true)}
+        <div class="grow"><b>${esc(S.trainer.name || 'Тренер')}</b>
+          <small>${team ? `${team.icon} Команда ${team.name} · ${team.desc}` : lvl >= 5 ? 'Выбери команду!' : 'Команда откроется на 5 уровне'}</small>
+          <div class="actions" style="justify-content:flex-start;margin-top:8px">
+            <button class="btn sm ghost" id="editTrainer">✏️ Внешность</button>
+            ${lvl >= 5 ? `<button class="btn sm ${team ? 'ghost' : ''}" id="pickTeam">${team ? '🔄 Сменить команду' : '🛡️ Выбрать команду'}</button>` : ''}
+          </div></div>
+      </div>
       <div class="stats">
         <div><b>${lvl}</b><span>уровень</span></div>
         <div><b>${fmtNum(S.xp)}</b><span>всего XP</span></div>
@@ -1796,10 +2342,13 @@
       <h3>🏅 Медали <small style="color:var(--muted);font-weight:700">· за каждую — монеты 🪙</small></h3><div class="medals">${medals}</div>`;
   }
   $('profileBody').addEventListener('click', (e) => {
+    if (e.target.id === 'editTrainer') return trainerSetup(false);
+    if (e.target.id === 'pickTeam') return teamPicker();
     const b = e.target.closest('[data-claim]'); if (!b) return;
     const q = S.quests.list[+b.dataset.claim]; if (q.claimed) return;
     q.claimed = true;
     const parts = grant(Object.assign({ coins: 10 }, QT[q.k].reward));
+    passXp(PASS_POINTS.quest);
     const r = b.getBoundingClientRect(); burst(r.left + r.width / 2, r.top, ['🎁', '✨', '⭐'], 12);
     SFX.catch(); const xp = addXp(500); toast(`Награда!<br>${parts.join('  ')}<br><small>+${xp} XP</small>`, 2000);
     renderQuestDot(); renderProfile();
@@ -1828,6 +2377,8 @@
       sw('music', 'Музыка') +
       sw('sound', 'Звуки') +
       sw('vibro', 'Вибрация', 'Работает на Android') +
+      sw('ar', 'AR-режим при ловле', 'Покемон на фоне камеры телефона') +
+      sw('saver', 'Экономия батареи', 'Без анимаций, эффектов погоды и с простыми спрайтами') +
       `<div class="set-row"><div><b>Обучение</b><small>Показать подсказки для новичка ещё раз</small></div><button class="btn sm ghost" id="tutBtn">Показать</button></div>` +
       '<h3>Сохранение</h3>' +
       `<div class="set-row"><div><b>Сохранить в файл</b><small>Чтобы перенести прогресс на другой телефон</small></div><button class="btn sm blue" id="exportBtn">Скачать</button></div>` +
@@ -1879,13 +2430,14 @@
     if (k === 'music') { if (S.settings.music) { audio(); playMusic(battle ? 'battle' : 'map'); } else stopMusicTimer(); }
     if (k === 'sound' && S.settings.sound) SFX.tap();
     if (k === 'vibro') vibrate(50);
+    if (k === 'saver') { applySaver(); rebuildMarkers(); }
   }
 
   // ================= TUTORIAL =================
   const TUTORIAL = [
     ['👋', 'Привет, тренер!', 'Это игра про покемонов в твоём городе. Гуляй по-настоящему — и они будут появляться рядом с тобой на карте.'],
     ['🎯', 'Ловля', 'Подойди к покемону ближе 70 м (синий круг) и нажми на него. Смахни покебол вверх. Бросай, когда цветное кольцо маленькое — шанс выше!<br><br>🌀 Покрути покебол пальцем по кругу перед броском — получится кручёный бросок.'],
-    ['🎁', 'Покестопы, яйца и напарник', 'Голубые кубики — покестопы: там покеболы, ягоды и яйца. Яйца вылупляются, пока ты гуляешь. Выбери покемона-напарника — он будет ходить рядом и находить конфеты.'],
+    ['🎁', 'Покестопы, яйца и напарник', 'Покестопы — столбики с крутящимся диском, они стоят у настоящих мест твоего города. Открой покестоп и раскрути диск пальцем: выпадут покеболы, ягоды и яйца. Яйца вылупляются, пока ты гуляешь. Выбери покемона-напарника — он будет ходить рядом и находить конфеты.'],
     ['⚔️', 'Бои и рейды', 'Красные значки VS — тренеры, с ними можно сразиться. Покестопы с боссом — рейды: победи его командой и поймай! В бою тапай по экрану, а когда враг светится красным — жми «Уклон».'],
     ['🌦️', 'Погода и местность', 'Погода настоящая: в дождь больше водных, в солнце — огненных и травяных. У воды живут водные покемоны, в парках — травяные и жуки, в городе — электрические и боевые.'],
     ['🧬', 'Развитие', 'За поимки дают конфеты и звёздную пыль. С ними покемонов можно усиливать и эволюционировать. Выполняй задания дня, собирай медали и заходи каждый день за бонусом!'],
@@ -1896,7 +2448,7 @@
       <div class="tut-dots">${TUTORIAL.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>
       <div class="actions">${i ? '<button class="btn ghost" id="tutPrev">Назад</button>' : '<button class="btn ghost" id="tutSkip">Пропустить</button>'}
       <button class="btn" id="tutNext">${last ? 'Начать!' : 'Далее'}</button></div>`, (box) => {
-      const done = () => { S.tutorialDone = true; save(); closePopup(); };
+      const done = () => { S.tutorialDone = true; save(); closePopup(); if (!S.trainer.name) setTimeout(() => trainerSetup(true), 200); };
       box.querySelector('#tutNext').onclick = () => { if (last) return done(); $('popup').classList.remove('on'); showTutorial(i + 1); };
       const prev = box.querySelector('#tutPrev'); if (prev) prev.onclick = () => { $('popup').classList.remove('on'); showTutorial(i - 1); };
       const skip = box.querySelector('#tutSkip'); if (skip) skip.onclick = done;
@@ -1910,6 +2462,8 @@
   $('btnProfile').addEventListener('click', () => openSheet('profile', renderProfile));
   $('btnProfile2').addEventListener('click', () => openSheet('profile', renderProfile));
   $('btnSettings').addEventListener('click', () => openSheet('settings', renderSettings));
+  $('btnPass').addEventListener('click', () => openSheet('passSheet', renderPass));
+  $('btnJournal').addEventListener('click', () => openSheet('journal', renderJournal));
   $('eggChip').addEventListener('click', () => { bagTab = 'eggs'; openSheet('bag', renderBag); });
   document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => { SFX.tap(); $(b.dataset.close).classList.remove('on'); }));
   $('btnCenter').addEventListener('click', () => {
@@ -1986,12 +2540,16 @@
 
   // ================= START =================
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
-  renderHud();
+  ensurePass();
+  applySaver();
+  renderAvatar();
   ensureQuests();
   renderQuestDot();
+  renderPassDot();
   renderBuddyMarker();
   buffTick();
   if (!S.tutorialDone) showTutorial(0);
+  else if (!S.trainer.name) trainerSetup(true);
   checkStreak();
   checkMedals();
   startGps();

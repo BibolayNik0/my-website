@@ -42,14 +42,17 @@
   <button class="fab glass" id="btnSettings" title="Настройки">⚙️</button>
   <button class="fab glass" id="btnCompass" title="На север"><span id="compassIcon">🧭</span></button>
   <button class="fab glass" id="btnCenter" title="Центрировать">🎯</button>
+  <button class="fab glass" id="btnPocket" title="Карманный режим">🌙</button>
 </div>
 
 <div class="radar glass" id="radar"></div>
 
 <div class="navbar">
   <button class="navbtn glass" id="btnProfile" title="Профиль и задания">📜<span class="dot" id="questDot"></span></button>
+  <button class="navbtn glass" id="btnPass" title="Боевой пропуск">🎖️<span class="dot" id="passDot"></span></button>
   <button class="pokebtn" id="btnDex" title="Покемоны и карточки"><span class="dot" id="packDot"></span></button>
-  <button class="navbtn glass" id="btnBag" title="Сумка и магазин">🎒</button>
+  <button class="navbtn glass" id="btnJournal" title="Дневник прогулок">📔</button>
+  <button class="navbtn glass" id="btnBag" title="Сумка, снаряжение и магазин">🎒</button>
 </div>
 
 <!-- Collection -->
@@ -69,6 +72,7 @@
   <h2>Сумка <button class="close" data-close="bag">✕</button></h2>
   <div class="tabs" id="bagTabs">
     <button data-tab="items">Предметы</button>
+    <button data-tab="gear">Снаряжение</button>
     <button data-tab="eggs">Яйца</button>
     <button data-tab="shop">Магазин</button>
   </div>
@@ -81,6 +85,18 @@
   <div id="profileBody"></div>
 </div></div>
 
+<!-- Battle pass -->
+<div class="screen sheet" id="passSheet"><div class="sheet-in">
+  <h2>Боевой пропуск <button class="close" data-close="passSheet">✕</button></h2>
+  <div id="passBody"></div>
+</div></div>
+
+<!-- Walk journal -->
+<div class="screen sheet" id="journal"><div class="sheet-in">
+  <h2>Дневник прогулок <button class="close" data-close="journal">✕</button></h2>
+  <div id="journalBody"></div>
+</div></div>
+
 <!-- Settings -->
 <div class="screen sheet" id="settings"><div class="sheet-in">
   <h2>Настройки <button class="close" data-close="settings">✕</button></h2>
@@ -91,6 +107,11 @@
 <!-- Pokémon detail -->
 <div class="screen sheet mon-detail" id="monSheet"></div>
 
+<!-- Pokéstop, photo mode, pocket mode -->
+<div class="screen stop-view" id="stopView"></div>
+<div class="screen photo-view" id="photoView"></div>
+<div class="pocket" id="pocket"><div id="pocketBody"></div></div>
+
 <!-- Cards -->
 <div class="screen card-view" id="cardView"></div>
 <div class="screen pack-view" id="packView"></div>
@@ -99,10 +120,15 @@
 <div class="screen" id="encounter">
   <div class="sky"><div class="sun"></div><div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div></div>
   <div class="ground3d"></div>
+  <video id="encVideo" class="enc-video" playsinline muted autoplay></video>
   <div class="enc-fx" id="encFx"></div>
   <div class="enc-top">
     <div class="enc-name glass"><b id="encName"></b> <b class="cpv" id="encCp"></b><small id="encInfo"></small></div>
-    <button class="close glass" id="encRun" title="Убежать">🏃</button>
+    <div class="enc-btns">
+      <button class="close glass" id="encRun" title="Убежать">🏃</button>
+      <button class="close glass" id="encAr" title="AR-режим">📷</button>
+      <button class="close glass" id="encPhoto" title="Сфотографировать">📸</button>
+    </div>
   </div>
   <div class="arena" id="arena">
     <div class="target" id="target">
