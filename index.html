@@ -48,7 +48,7 @@
 
 <div class="navbar">
   <button class="navbtn glass" id="btnProfile" title="Профиль и задания">📜<span class="dot" id="questDot"></span></button>
-  <button class="pokebtn" id="btnDex" title="Покемоны"></button>
+  <button class="pokebtn" id="btnDex" title="Покемоны и карточки"><span class="dot" id="packDot"></span></button>
   <button class="navbtn glass" id="btnBag" title="Сумка и магазин">🎒</button>
 </div>
 
@@ -59,6 +59,7 @@
   <div class="tabs" id="dexTabs">
     <button data-tab="mine">Мои</button>
     <button data-tab="dex">Покедекс</button>
+    <button data-tab="cards">Карточки</button>
   </div>
   <div id="dexBody"></div>
 </div></div>
@@ -89,6 +90,10 @@
 
 <!-- Pokémon detail -->
 <div class="screen sheet mon-detail" id="monSheet"></div>
+
+<!-- Cards -->
+<div class="screen card-view" id="cardView"></div>
+<div class="screen pack-view" id="packView"></div>
 
 <!-- Encounter -->
 <div class="screen" id="encounter">

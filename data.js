@@ -226,9 +226,33 @@ const ITEMS = {
   pass:    { name: 'Рейд-пропуск',    icon: '🎟️', desc: 'Вход в рейд. Один бесплатный каждый день' },
 };
 const CURRENCY = {
-  dust:  { name: 'Звёздная пыль', icon: '💫' },
-  coins: { name: 'Монеты',        icon: '🪙' },
+  dust:   { name: 'Звёздная пыль',   icon: '💫' },
+  coins:  { name: 'Монеты',          icon: '🪙' },
+  pack:   { name: 'Набор карточек',  icon: '🎴' },
+  shards: { name: 'Осколки карточек', icon: '🔷' },
 };
+
+// Collectible cards: card rarity follows the Pokémon's rarity
+const CARD_RARITY = {
+  1: { name: 'Обычная',     frame: 'бронзовая',   shards: 5,   craft: 40 },
+  2: { name: 'Необычная',   frame: 'серебряная',  shards: 10,  craft: 80 },
+  3: { name: 'Редкая',      frame: 'золотая',     shards: 25,  craft: 200 },
+  4: { name: 'Эпическая',   frame: 'фиолетовая',  shards: 60,  craft: 500 },
+  5: { name: 'Легендарная', frame: 'голографическая', shards: 150, craft: 1200 },
+};
+const CARD_SHINY_CHANCE = 0.02;
+const CARD_SETS = [
+  { id: 'starters', name: 'Стартовые',            icon: '🌱', ids: [1, 4, 7],                 reward: { pack: 1, coins: 50 } },
+  { id: 'finals',   name: 'Эволюции стартовых',   icon: '🔥', ids: [3, 6, 9],                 reward: { pack: 2, ultra: 5 } },
+  { id: 'pika',     name: 'Электромыши',          icon: '⚡', ids: [25, 26],                  reward: { pack: 1, great: 5 } },
+  { id: 'eevee',    name: 'Иви и эволюции',       icon: '🦊', ids: [133, 134, 135, 136],      reward: { pack: 2, coins: 100 } },
+  { id: 'ghosts',   name: 'Призраки',             icon: '👻', ids: [92, 93, 94],              reward: { pack: 1, incense: 2 } },
+  { id: 'fossils',  name: 'Ископаемые',           icon: '🦴', ids: [138, 139, 140, 141, 142], reward: { pack: 2, shards: 300 } },
+  { id: 'dragons',  name: 'Драконы',              icon: '🐉', ids: [147, 148, 149],           reward: { pack: 2, ultra: 10 } },
+  { id: 'birds',    name: 'Легендарные птицы',    icon: '🦅', ids: [144, 145, 146],           reward: { pack: 3, coins: 300 } },
+  { id: 'mew',      name: 'Мьюту и Мью',          icon: '🧬', ids: [150, 151],                reward: { pack: 3, coins: 300 } },
+  { id: 'all',      name: 'Полный альбом',        icon: '🏆', ids: 'all',                     reward: { pack: 10, coins: 2000 } },
+];
 
 const SHOP = [
   { id: 'balls',   title: '20 Покеболов',     icon: '🔴', price: 100, give: { basic: 20 } },
@@ -240,6 +264,7 @@ const SHOP = [
   { id: 'pass',    title: 'Рейд-пропуск',     icon: '🎟️', price: 100, give: { pass: 1 } },
   { id: 'egg',     title: 'Яйцо 10 км',       icon: '🥚', price: 250, egg: 10 },
   { id: 'dust',    title: '5000 звёздной пыли', icon: '💫', price: 200, give: { dust: 5000 } },
+  { id: 'pack',    title: 'Набор карточек',   icon: '🎴', price: 120, give: { pack: 1 } },
 ];
 
 // Weather -> boosted types

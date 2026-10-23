@@ -99,6 +99,7 @@
     eggs: [{ id: 1, km: 2, walked: 0 }], eggUid: 2, buddy: null, team: [],
     quests: null, lastCatchDay: '', incenseUntil: 0, luckyUntil: 0, freePassDay: '', streak: { last: '', count: 0 },
     medals: {}, tutorialDone: false, uid: 1, settings: { ...DEFAULT_SETTINGS },
+    cards: {}, shinyCards: {}, shards: 0, packs: 1, setsClaimed: {},
   });
   function migrate(p) {
     const s = Object.assign(defaultState(), p);
@@ -256,6 +257,8 @@
       if (BALLS[k]) S.balls[k] += n;
       else if (k === 'dust') S.stardust += n;
       else if (k === 'coins') S.coins += n;
+      else if (k === 'pack') S.packs += n;
+      else if (k === 'shards') S.shards += n;
       else S.items[k] = (S.items[k] || 0) + n;
       parts.push(rewardLabel(k, n));
     }
@@ -268,7 +271,7 @@
     const before = playerLvl(); S.xp += n; const after = playerLvl();
     save(); renderHud();
     for (let l = before + 1; l <= after; l++) {
-      const parts = grant({ basic: 10, great: 5, ultra: l >= 5 ? 3 : 0, berry: 3, incense: l % 3 === 0 ? 1 : 0, pass: l % 2 === 0 ? 1 : 0, coins: 20 });
+      const parts = grant({ basic: 10, great: 5, ultra: l >= 5 ? 3 : 0, berry: 3, incense: l % 3 === 0 ? 1 : 0, pass: l % 2 === 0 ? 1 : 0, coins: 20, pack: l % 5 === 0 ? 1 : 0 });
       if (l % 5 === 0) addEgg(10); else if (l % 2 === 0) addEgg(5);
       setTimeout(() => { SFX.level(); vibrate([60, 40, 60]); }, 400);
       popup(`<div class="big">🎉</div><h2>Уровень ${l}!</h2><p>Редкие покемоны теперь встречаются чаще, а покемонов можно усиливать до уровня ${Math.min(40, l + 2)}.</p>
@@ -335,6 +338,7 @@
     { id: 'trainer', name: 'Боец',           icon: '🥊', val: () => S.trainerWins, tiers: [5, 50, 250], unit: 'побед' },
     { id: 'raid',    name: 'Рейдер',         icon: '🔥', val: () => S.raidWins, tiers: [1, 20, 100], unit: 'рейдов' },
     { id: 'curve',   name: 'Кручёный',       icon: '🌀', val: () => S.curveballs, tiers: [10, 100, 500], unit: 'бросков' },
+    { id: 'cards',   name: 'Картограф',      icon: '🃏', val: () => cardsOwned(), tiers: [20, 75, 151], unit: 'карточек' },
   ];
   const MEDAL_COINS = [50, 150, 400];
   const TIER_NAMES = ['Бронза', 'Серебро', 'Золото'];
@@ -344,11 +348,11 @@
       if (tier > had) {
         S.medals[m.id] = tier;
         let coins = 0; for (let t = had; t < tier; t++) coins += MEDAL_COINS[t];
-        S.coins += coins; save();
+        S.coins += coins; S.packs += tier - had; save(); renderHud();
         setTimeout(() => {
           SFX.coin();
           popup(`<div class="big">🏅</div><h2>Медаль «${m.name}»</h2><p>${TIER_NAMES[tier - 1]}: ${m.tiers[tier - 1]} ${m.unit}</p>
-            ${rewardsHtml([rewardLabel('coins', coins)])}<button class="btn" data-ok>Ура!</button>`);
+            ${rewardsHtml([rewardLabel('coins', coins), rewardLabel('pack', tier - had)])}<button class="btn" data-ok>Ура!</button>`);
         }, 800);
       }
     });
@@ -357,7 +361,7 @@
   // ================= DAILY STREAK =================
   const STREAK_REWARDS = [
     { basic: 10, coins: 10 }, { berry: 3, coins: 10 }, { great: 5, coins: 15 }, { dust: 1000, coins: 15 },
-    { incense: 1, coins: 20 }, { ultra: 3, coins: 25 }, { ultra: 5, pass: 1, lucky: 1, coins: 100 },
+    { incense: 1, coins: 20 }, { ultra: 3, coins: 25 }, { ultra: 5, pass: 1, lucky: 1, coins: 100, pack: 1 },
   ];
   function checkStreak() {
     const d = today();
@@ -387,6 +391,7 @@
     $('xpText').textContent = `${fmtNum(rest)} / ${fmtNum(need)} XP`;
     $('xpFill').style.width = (rest / need * 100) + '%';
     $('ballsCount').textContent = S.balls.basic + S.balls.great + S.balls.ultra;
+    $('packDot').textContent = S.packs; $('packDot').classList.toggle('on', S.packs > 0);
     renderEggChip();
   }
   function renderEggChip() {
@@ -871,7 +876,8 @@
     $('encName').textContent = (mon.shiny ? '✨ ' : '') + mon.sp.name;
     $('encCp').textContent = 'CP ' + mon.cp;
     $('encInfo').innerHTML = `${typeChip(mon.sp.type)} <span style="color:${RARITY[mon.sp.rarity].color};font-size:12px;font-weight:800">● ${RARITY[mon.sp.rarity].label}</span>` +
-      (mon.boosted && weather ? `<span class="boostline">${weatherIcon()} Усилен погодой: +25% опыта и пыли</span>` : '');
+      (mon.boosted && weather ? `<span class="boostline">${weatherIcon()} Усилен погодой: +25% опыта и пыли</span>` : '') +
+      (cardBonus(mon.sp.type) ? `<span class="boostline">🃏 Карточки: +${Math.round(cardBonus(mon.sp.type) * 100)}% к поимке</span>` : '');
     const body = $('encBody'); body.className = 'body';
     const anim = S.settings.sprites === 'anim';
     body.innerHTML = anim
@@ -1019,7 +1025,7 @@
       if (curve) { bonus *= 1.7; bxp += 20; label += ' 🌀'; S.curveballs++; quest('curve'); }
       enc.bonusXp = Math.max(enc.bonusXp || 0, bxp);
       const chance = Math.min(0.97, RARITY[enc.mon.sp.rarity].catchRate * ballDef(enc.ball).mult * bonus * (enc.berry ? 1.5 : 1)
-        * (enc.raid ? 2 : 1) * (1 + enc.fails * 0.08));
+        * (enc.raid ? 2 : 1) * (1 + enc.fails * 0.08) * (1 + cardBonus(enc.mon.sp.type)));
       const success = Math.random() < chance;
       enc.berry = false;
       toast(label, 800);
@@ -1069,6 +1075,12 @@
       SFX.catch(); vibrate([40, 60, 80]);
       burst(bx, by, ['⭐', '✨', '💫'], 16);
       quest('catch'); quest('type', 1, sp.type);
+      let cardLine = null;
+      if (Math.random() < 0.05 * (enc.bonusXp >= 100 ? 2 : 1)) {
+        const shinyCard = Math.random() < (mon.shiny ? 0.5 : CARD_SHINY_CHANCE);
+        cardLine = `🃏 Карточка${shinyCard ? ' ✨' : ''}${addCard(sp.id, shinyCard) ? ' · новая!' : ''}`;
+        save(); checkMedals();
+      }
       setTimeout(() => {
         cancelAnimationFrame(enc.raf); enc = null;
         $('encounter').classList.remove('on');
@@ -1076,6 +1088,7 @@
         const lines = [`+${gained} XP`, `🍬 +${candy}`, `💫 +${dust}`];
         if (first) lines.push('🆕 Новый вид!');
         if (firstToday) lines.push('☀️ Первая поимка дня');
+        if (cardLine) lines.push(cardLine);
         popup(`<img class="art" src="${artUrl(sp.id, mon.shiny)}" alt=""><h2>${mon.shiny ? '✨ ' : ''}${sp.name} пойман!</h2>
           <div>${typeChip(sp.type)} <b>CP ${mon.cp}</b></div>${rewardsHtml(lines)}
           <button class="btn" data-ok>Отлично!</button>`);
@@ -1302,7 +1315,7 @@
       SFX.level(); vibrate([60, 40, 60, 40, 120]);
       if (cfg.kind === 'trainer') {
         S.beaten[cfg.trainer.id] = Date.now(); S.trainerWins++;
-        const parts = grant({ dust: 500 + playerLvl() * 20, coins: 10, great: 2, berry: Math.random() < 0.5 ? 2 : 0, pass: Math.random() < 0.15 ? 1 : 0 });
+        const parts = grant({ dust: 500 + playerLvl() * 20, coins: 10, great: 2, berry: Math.random() < 0.5 ? 2 : 0, pass: Math.random() < 0.15 ? 1 : 0, pack: Math.random() < 0.25 ? 1 : 0 });
         const xp = addXp(600);
         quest('battle'); checkMedals(); refreshWorld();
         popup(`<div class="big">🏆</div><h2>Победа!</h2><p>${cfg.trainer.look} ${cfg.trainer.name}: «Ты силён! Держи награду.»</p>
@@ -1310,7 +1323,7 @@
       } else {
         const raid = cfg.raid, left = Math.max(0, b.limit - (Date.now() - b.start));
         S.raidsDone[raid.id] = Date.now(); S.raidWins++;
-        const parts = grant({ dust: 1000 * raid.tier, coins: 10 * raid.tier, ultra: raid.tier - 1, berry: 3 });
+        const parts = grant({ dust: 1000 * raid.tier, coins: 10 * raid.tier, ultra: raid.tier - 1, berry: 3, pack: raid.tier === 5 ? 2 : 1 });
         const xp = addXp({ 3: 1500, 4: 3000, 5: 6000 }[raid.tier]);
         const premier = 5 + Math.floor(left / 20000);
         checkMedals(); refreshWorld();
@@ -1335,6 +1348,7 @@
       <div><b>${S.mons.length}</b><span>в коллекции</span></div>
       <div><b>${fmtNum(S.stardust)}</b><span>💫 пыли</span></div>`;
     document.querySelectorAll('#dexTabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === dexTab));
+    if (dexTab === 'cards') return renderCards();
     if (dexTab === 'dex') {
       $('dexBody').innerHTML = '<div class="grid">' + SPECIES.map((s) => {
         const c = S.caught[s.id], seen = S.seen[s.id];
@@ -1479,6 +1493,221 @@
         openMon(uid);
       }, 2300);
     };
+  }
+
+  // ================= COLLECTIBLE CARDS =================
+  const ownsCard = (id) => !!(S.cards[id] || S.shinyCards[id]);
+  const cardsOwned = () => SPECIES.filter((s) => ownsCard(s.id)).length;
+  function addCard(id, shiny) {
+    const key = shiny ? 'shinyCards' : 'cards', isNew = !S[key][id];
+    S[key][id] = (S[key][id] || 0) + 1;
+    return isNew;
+  }
+  // Gold-or-better cards give +5% catch chance for their type (max +25%)
+  function cardBonus(type) {
+    const n = SPECIES.filter((s) => s.type === type && s.rarity >= 3 && ownsCard(s.id)).length;
+    return Math.min(0.25, n * 0.05);
+  }
+  function rollCard(r, guaranteedRare) {
+    const weights = guaranteedRare ? { 3: 80, 4: 17, 5: 3 } : { 1: 60, 2: 28, 3: 9, 4: 2.5, 5: 0.5 };
+    let x = r() * Object.values(weights).reduce((a, b) => a + b, 0), tier = 1;
+    for (const t in weights) { if ((x -= weights[t]) <= 0) { tier = +t; break; } }
+    const sp = pick(SPECIES.filter((s) => s.rarity === tier), r);
+    return { id: sp.id, shiny: r() < CARD_SHINY_CHANCE };
+  }
+  const setIds = (set) => set.ids === 'all' ? SPECIES.map((s) => s.id) : set.ids;
+
+  function cardHtml(id, opts = {}) {
+    const s = SP(id), b = baseStats(id), [fast, charge] = MOVES[s.type];
+    const known = opts.missing ? (S.seen[id] || S.caught[id]) : true;
+    const cls = ['tcg', 'r' + s.rarity, opts.shiny ? 'shiny' : '', opts.mini ? 'mini' : '', opts.missing ? 'missing' : ''].join(' ');
+    return `<div class="${cls}" style="--type:${TYPE_COLORS[s.type]};${opts.w ? `--w:${opts.w}` : ''}" ${opts.attrs || ''}>
+      <div class="tcg-inner">
+        <div class="tcg-head"><b>${known ? s.name : '???'}${opts.shiny ? ' ✨' : ''}</b><span>CP ${calcCp(id, 40, { a: 15, d: 15, h: 15 })}</span></div>
+        <div class="tcg-art"><img src="${opts.mini ? pixelUrl(id, opts.shiny) : artUrl(id, opts.shiny)}" alt="" loading="lazy" draggable="false"></div>
+        <div class="tcg-type">${typeChip(s.type)} <span>${'◆'.repeat(s.rarity)}</span></div>
+        <div class="tcg-moves">
+          <div><b>${fast}</b><span>7</span></div>
+          <div><b>${charge}</b><span>60</span></div>
+          <div class="tcg-stats">АТК ${b.atk} · ЗАЩ ${b.def} · ЗДР ${b.sta}</div>
+        </div>
+        <div class="tcg-foot"><span>#${String(id).padStart(3, '0')}/151</span><span>${CARD_RARITY[s.rarity].name}</span></div>
+      </div>
+      <div class="tcg-shine"></div>
+      ${opts.badge || ''}
+    </div>`;
+  }
+
+  // ---- Album ----
+  let cardFilter = 'all';
+  function renderCards() {
+    const owned = cardsOwned();
+    const dupShards = duplicateShards();
+    const filters = [['all', 'Все'], ['1', '◆'], ['2', '◆◆'], ['3', '◆◆◆'], ['4', '◆×4'], ['5', '◆×5'], ['shiny', '✨']];
+    const list = SPECIES.filter((s) => cardFilter === 'all' || (cardFilter === 'shiny' ? S.shinyCards[s.id] : s.rarity === +cardFilter));
+    const sets = CARD_SETS.map((set) => {
+      const ids = setIds(set), have = ids.filter(ownsCard).length, done = have === ids.length, claimed = S.setsClaimed[set.id];
+      const rew = Object.keys(set.reward).map((k) => rewardLabel(k, set.reward[k])).join(' ');
+      return `<div class="quest ${claimed ? 'done' : ''}"><div class="qt"><div><b>${set.icon} ${set.name}</b><br><small>${have} / ${ids.length} · награда: ${rew}</small></div>
+        ${claimed ? '✅' : done ? `<button class="btn sm" data-set="${set.id}">Забрать</button>` : ''}</div>
+        <div class="prog"><i style="width:${have / ids.length * 100}%"></i></div></div>`;
+    }).join('');
+    $('dexBody').innerHTML = `
+      <div class="wallet">
+        <div>🎴 ${S.packs}<small>наборов</small></div>
+        <div>🔷 ${fmtNum(S.shards)}<small>осколков</small></div>
+        <div>🃏 ${owned}/151<small>собрано</small></div>
+      </div>
+      <div class="md-row2" style="margin-bottom:12px">
+        <button class="btn" id="openPackBtn" ${S.packs ? '' : 'disabled'}>🎴 Открыть набор</button>
+        <button class="btn ghost" id="dustBtn" ${dupShards ? '' : 'disabled'}>🔷 Повторы → +${dupShards}</button>
+      </div>
+      <p style="color:var(--muted);font-size:13px;margin:0 0 12px">Наборы дают за рейды, уровни, медали и серию дней, а ещё их продают в магазине. Золотые карточки и выше дают +5% к поимке покемонов своего типа.</p>
+      <div class="seg" style="margin-bottom:12px">${filters.map(([v, l]) => `<button class="${cardFilter === v ? 'on' : ''}" data-cf="${v}">${l}</button>`).join('')}</div>
+      <div class="card-grid">${list.map((s) => {
+        const n = (S.cards[s.id] || 0) + (S.shinyCards[s.id] || 0), shinyOnly = !S.cards[s.id] && S.shinyCards[s.id];
+        const badge = n ? `<span class="tcg-count">×${n}${S.shinyCards[s.id] ? ' ✨' : ''}</span>` : '';
+        return cardHtml(s.id, { mini: true, shiny: cardFilter === 'shiny' || shinyOnly, missing: !n, badge, attrs: `data-card="${s.id}"` });
+      }).join('')}</div>
+      <h3>🗂️ Коллекции</h3>${sets}`;
+  }
+  function duplicateShards() {
+    let n = 0;
+    for (const id in S.cards) n += Math.max(0, S.cards[id] - 1) * CARD_RARITY[SP(+id).rarity].shards;
+    for (const id in S.shinyCards) n += Math.max(0, S.shinyCards[id] - 1) * CARD_RARITY[SP(+id).rarity].shards * 4;
+    return n;
+  }
+  $('dexBody').addEventListener('click', (e) => {
+    if (dexTab !== 'cards') return;
+    const f = e.target.closest('[data-cf]'); if (f) { cardFilter = f.dataset.cf; SFX.tap(); return renderCards(); }
+    if (e.target.closest('#openPackBtn')) return openPack();
+    if (e.target.closest('#dustBtn')) {
+      const b = e.target.closest('#dustBtn');
+      if (!b.dataset.armed) { b.dataset.armed = 1; b.textContent = 'Точно? Нажми ещё раз'; return; }
+      const n = duplicateShards();
+      for (const id in S.cards) S.cards[id] = Math.min(1, S.cards[id]);
+      for (const id in S.shinyCards) S.shinyCards[id] = Math.min(1, S.shinyCards[id]);
+      S.shards += n; save(); SFX.coin(); toast(`🔷 +${n} осколков`); return renderCards();
+    }
+    const st = e.target.closest('[data-set]');
+    if (st) {
+      const set = CARD_SETS.find((x) => x.id === st.dataset.set);
+      if (S.setsClaimed[set.id] || !setIds(set).every(ownsCard)) return;
+      S.setsClaimed[set.id] = true;
+      const parts = grant(set.reward);
+      const r = st.getBoundingClientRect(); burst(r.left + r.width / 2, r.top, ['🃏', '✨', '⭐'], 14);
+      SFX.level();
+      popup(`<div class="big">${set.icon}</div><h2>Коллекция «${set.name}» собрана!</h2>${rewardsHtml(parts)}<button class="btn" data-ok>Ура!</button>`);
+      return renderCards();
+    }
+    const c = e.target.closest('[data-card]');
+    if (c) {
+      const id = +c.dataset.card;
+      if (ownsCard(id)) openCard(id, cardFilter === 'shiny' || !S.cards[id]);
+      else craftMenu(id);
+    }
+  });
+  function craftMenu(id) {
+    const s = SP(id), cost = CARD_RARITY[s.rarity].craft, known = S.seen[id] || S.caught[id];
+    popup(`<div style="display:flex;justify-content:center;margin:6px 0 10px">${cardHtml(id, { mini: true, missing: true, w: '150px' })}</div>
+      <h2>${known ? s.name : 'Неизвестная карточка'}</h2><p>${CARD_RARITY[s.rarity].name} карточка · #${String(id).padStart(3, '0')}<br>Её можно найти в наборе или создать из осколков.</p>
+      <div class="actions"><button class="btn" id="craftBtn" ${S.shards >= cost ? '' : 'disabled'}>Создать · 🔷 ${cost}</button><button class="btn ghost" data-ok>Закрыть</button></div>`, (box) => {
+      box.querySelector('#craftBtn').onclick = () => {
+        if (S.shards < cost) return;
+        S.shards -= cost; addCard(id, false); save(); checkMedals();
+        closePopup(); SFX.evolve(); renderCards();
+        setTimeout(() => openCard(id, false, true), 200);
+      };
+    });
+  }
+
+  // ---- Card viewer with 3D tilt ----
+  let tiltCard = null, gyroAsked = false;
+  function openCard(id, shiny, celebrate) {
+    const s = SP(id), n = shiny ? S.shinyCards[id] : S.cards[id];
+    const bonus = s.rarity >= 3 ? `<p>🃏 Бонус: +5% к поимке покемонов типа «${s.type}»</p>` : '';
+    const swap = S.cards[id] && S.shinyCards[id] ? `<button class="btn ghost sm" id="cvSwap">${shiny ? 'Обычная' : '✨ Блестящая'}</button>` : '';
+    $('cardView').innerHTML = `<button class="close cv-close" id="cvClose">✕</button>
+      <div class="cv-stage">${cardHtml(id, { shiny })}</div>
+      <div class="cv-info"><b>${CARD_RARITY[s.rarity].name} карточка${shiny ? ' ✨' : ''}</b> · у тебя ×${n || 0}${bonus}${swap}</div>`;
+    $('cardView').classList.add('on');
+    tiltCard = $('cardView').querySelector('.tcg');
+    $('cvClose').onclick = () => { $('cardView').classList.remove('on'); tiltCard = null; };
+    const sw = $('cvSwap'); if (sw) sw.onclick = () => openCard(id, !shiny);
+    if (celebrate) { const r = tiltCard.getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 2, ['✨', '⭐', '🃏'], 18); }
+    if (!gyroAsked && window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      gyroAsked = true; DeviceOrientationEvent.requestPermission().catch(() => {});
+    }
+    SFX.spin();
+  }
+  function tilt(card, nx, ny) {
+    // nx, ny in [-1, 1]
+    card.style.transform = `rotateY(${nx * 18}deg) rotateX(${-ny * 18}deg)`;
+    card.style.setProperty('--mx', `${50 + nx * 45}%`);
+    card.style.setProperty('--my', `${50 + ny * 45}%`);
+  }
+  $('cardView').addEventListener('pointermove', (e) => {
+    if (!tiltCard) return;
+    const r = tiltCard.getBoundingClientRect();
+    tilt(tiltCard, Math.max(-1, Math.min(1, (e.clientX - r.left) / r.width * 2 - 1)), Math.max(-1, Math.min(1, (e.clientY - r.top) / r.height * 2 - 1)));
+  });
+  $('cardView').addEventListener('pointerleave', () => { if (tiltCard) tilt(tiltCard, 0, 0); });
+  window.addEventListener('deviceorientation', (e) => {
+    if (!tiltCard || e.gamma === null) return;
+    tilt(tiltCard, Math.max(-1, Math.min(1, e.gamma / 30)), Math.max(-1, Math.min(1, (e.beta - 45) / 30)));
+  });
+
+  // ---- Pack opening ----
+  function openPack() {
+    if (!S.packs) return;
+    S.packs--;
+    const r = Math.random;
+    const cards = [rollCard(r), rollCard(r), rollCard(r), rollCard(r), rollCard(r, true)];
+    cards.forEach((c) => { c.isNew = addCard(c.id, c.shiny); });
+    save(); renderHud();
+    const view = $('packView');
+    view.innerHTML = `<div class="pack-stage"><div class="pack" id="packFoil"><span>Покемон GO</span><b>🎴</b><small>5 карточек</small></div></div>
+      <div class="pack-hint">Нажми на набор, чтобы открыть</div>`;
+    view.classList.add('on');
+    SFX.appear();
+    $('packFoil').onclick = () => {
+      $('packFoil').classList.add('tear'); SFX.charge(); vibrate([30, 40, 60]);
+      setTimeout(() => showPackCards(cards), 550);
+    };
+  }
+  function showPackCards(cards) {
+    const view = $('packView');
+    view.innerHTML = `<div class="pack-cards">${cards.map((c, i) => {
+      const s = SP(c.id);
+      return `<div class="flip ${s.rarity >= 3 || c.shiny ? 'rare' : ''}" style="--glow:${RARITY[s.rarity].color}" data-i="${i}">
+        <div class="in"><div class="back"></div><div class="front">${cardHtml(c.id, { mini: true, shiny: c.shiny, w: '104px',
+          badge: c.isNew ? '<span class="newbadge">NEW</span>' : '' })}</div></div></div>`;
+    }).join('')}</div>
+      <div class="pack-hint" id="packHint">Переворачивай карточки!</div>
+      <div class="actions" id="packActions" style="visibility:hidden;margin-top:8px">
+        <button class="btn" id="packDone">Готово</button>${S.packs ? `<button class="btn blue" id="packMore">Ещё набор (${S.packs})</button>` : ''}
+      </div>`;
+    let opened = 0;
+    view.querySelectorAll('.flip').forEach((f) => {
+      f.addEventListener('click', () => {
+        const c = cards[+f.dataset.i];
+        if (f.classList.contains('open')) return openCard(c.id, c.shiny);
+        f.classList.add('open'); opened++;
+        const s = SP(c.id);
+        if (s.rarity >= 3 || c.shiny) {
+          const r = f.getBoundingClientRect();
+          setTimeout(() => burst(r.left + r.width / 2, r.top + r.height / 2, c.shiny ? ['✨', '🌈'] : ['✨', '⭐'], s.rarity >= 4 || c.shiny ? 18 : 10), 300);
+          if (s.rarity >= 4 || c.shiny) { flash(); SFX.level(); vibrate([40, 40, 100]); } else SFX.catch();
+        } else SFX.tap();
+        if (opened === cards.length) {
+          $('packHint').textContent = 'Нажми на карточку, чтобы рассмотреть';
+          $('packActions').style.visibility = 'visible';
+          checkMedals();
+        }
+      });
+    });
+    view.querySelector('#packDone').onclick = () => { view.classList.remove('on'); if (dexTab === 'cards' && $('dex').classList.contains('on')) renderCards(); };
+    const more = view.querySelector('#packMore'); if (more) more.onclick = () => openPack();
   }
 
   // ================= BAG: items, eggs, shop =================
