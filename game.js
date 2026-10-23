@@ -524,7 +524,7 @@
   map.on('zoom', updateRange);
   map.on('rotate', () => { $('compassIcon').style.transform = `rotate(${-map.getBearing() - 45}deg)`; });
 
-  let pos = null, demo = false, follow = true, lastPos = null, lastPosT = 0;
+  let pos = null, follow = true, lastPos = null, lastPosT = 0;
   map.on('dragstart', () => { follow = false; });
 
   function setPos(p, instant) {
@@ -532,7 +532,7 @@
     if (lastPos) {
       const d = dist(lastPos, p), dt = Math.max(0.5, (now - lastPosT) / 1000);
       // ignore GPS jitter and driving
-      if (d > (demo ? 0.5 : 3) && d < 300 && (demo || d / dt <= MAX_SPEED)) walk(d);
+      if (d > 3 && d < 300 && d / dt <= MAX_SPEED && !isBlocked()) walk(d);
     }
     lastPos = p; lastPosT = now; pos = p;
     const ll = [p[1], p[0]];
@@ -729,7 +729,7 @@
     renderRadar(nearby.slice(0, 10));
     const nearCount = nearby.filter((x) => x.d <= CATCH_RADIUS).length;
     const ci = Math.floor(pos[0] / CELL), cj = Math.floor(pos[1] / CELL), bm = BIOMES[biomeOf(ci, cj)];
-    $('status').textContent = (demo ? 'Демо · ' : '') + `${bm.icon} ${bm.name} · ` +
+    $('status').textContent = `${bm.icon} ${bm.name} · ` +
       (nearCount ? `Можно поймать: ${nearCount}` : nearby.length ? 'Подойди к покемону' : 'Гуляй, чтобы найти покемонов');
     cleanup();
   }
@@ -1237,7 +1237,7 @@
     } else endBattle(true);
   }
   function battleTick() {
-    if (!battle || battle.over) return;
+    if (!battle || battle.over || battle.pausedAt) return;
     const now = Date.now(), e = curE(), m = curM();
     if (battle.limit && now - battle.start > battle.limit) { toast('Время вышло!', 1200); return endBattle(false); }
     if (e.hp > 0 && m.hp > 0) {
@@ -1586,7 +1586,7 @@
       `<button class="${S.settings[k] === v ? 'on' : ''}" data-seg="${k}" data-v="${v}">${l}</button>`).join('')}</div></div>`;
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
     $('settingsBody').innerHTML =
-      (isStandalone() ? '' : `<div class="set-row"><div><b>📲 Установить как приложение</b><small>${installPrompt ? 'Иконка на главном экране и работа без интернета' : ios ? 'Safari: «Поделиться» → «На экран «Домой»»' : 'Меню браузера → «Установить приложение» / «Добавить на главный экран»'}</small></div>${installPrompt ? '<button class="btn sm" id="installBtn">Установить</button>' : ''}</div>`) +
+      (isStandalone() ? '' : `<div class="set-row"><div><b>📲 Установить как приложение</b><small>${installPrompt ? 'Иконка на главном экране, запуск на весь экран' : ios ? 'Safari: «Поделиться» → «На экран «Домой»»' : 'Меню браузера → «Установить приложение» / «Добавить на главный экран»'}</small></div>${installPrompt ? '<button class="btn sm" id="installBtn">Установить</button>' : ''}</div>`) +
       '<h3>Карта</h3>' +
       seg('mapStyle', 'Стиль карты', [['auto', 'Авто'], ['day', 'День'], ['night', 'Ночь'], ['light', 'Светлая']]) +
       sw('buildings', '3D-здания', 'Объёмные дома на карте') +
@@ -1599,8 +1599,6 @@
       sw('music', 'Музыка') +
       sw('sound', 'Звуки') +
       sw('vibro', 'Вибрация', 'Работает на Android') +
-      `<div class="set-row col"><div><b>Режим</b><small>${demo ? 'Демо: ходи стрелками' : 'GPS: настоящая прогулка'}</small></div>
-        <div class="seg"><button class="${demo ? '' : 'on'}" id="modeGps">GPS</button><button class="${demo ? 'on' : ''}" id="modeDemo">Демо</button></div></div>` +
       `<div class="set-row"><div><b>Обучение</b><small>Показать подсказки для новичка ещё раз</small></div><button class="btn sm ghost" id="tutBtn">Показать</button></div>` +
       '<h3>Сохранение</h3>' +
       `<div class="set-row"><div><b>Сохранить в файл</b><small>Чтобы перенести прогресс на другой телефон</small></div><button class="btn sm blue" id="exportBtn">Скачать</button></div>` +
@@ -1612,8 +1610,6 @@
     const t = e.target;
     if (t.dataset.sw) { const k = t.dataset.sw; S.settings[k] = !S.settings[k]; save(); SFX.tap(); applySetting(k); renderSettings(); return; }
     if (t.dataset.seg) { const k = t.dataset.seg; S.settings[k] = t.dataset.v; save(); SFX.tap(); applySetting(k); renderSettings(); return; }
-    if (t.id === 'modeGps' && demo) { startGps(); renderSettings(); }
-    if (t.id === 'modeDemo' && !demo) { $('settings').classList.remove('on'); startDemo(); }
     if (t.id === 'tutBtn') { $('settings').classList.remove('on'); showTutorial(0); }
     if (t.id === 'installBtn' && installPrompt) { installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; renderSettings(); }
     if (t.id === 'exportBtn') exportSave();
@@ -1693,57 +1689,71 @@
   });
   $('btnCompass').addEventListener('click', () => { SFX.tap(); map.easeTo({ bearing: 0, duration: 600 }); });
 
-  // ================= LOCATION =================
-  let watchId = null;
+  // ================= CONNECTION & LOCATION GUARDS =================
+  // The game needs both internet and real GPS. While either is missing a blocking screen covers everything.
+  const blocks = {};
+  const isBlocked = () => Object.keys(blocks).length > 0;
+  function setBlock(key, html) {
+    if (html) blocks[key] = html; else delete blocks[key];
+    const msg = blocks.offline || blocks.gps;
+    $('blocker').classList.toggle('on', !!msg);
+    if (msg) $('blockerBox').innerHTML = msg;
+    if (battle) {
+      if (msg && !battle.pausedAt) battle.pausedAt = Date.now();
+      if (!msg && battle.pausedAt) { const d = Date.now() - battle.pausedAt; battle.start += d; battle.nextEnemy += d; battle.pausedAt = 0; }
+    }
+  }
+  $('blocker').addEventListener('click', (e) => {
+    if (e.target.id === 'retryNet') ping();
+    if (e.target.id === 'retryGps') startGps();
+  });
+
+  let online = true, failStreak = 0;
+  async function ping() {
+    if (!navigator.onLine) return setOnline(false);
+    const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), 6000);
+    try {
+      const r = await fetch(`manifest.webmanifest?ping=${Date.now()}`, { cache: 'no-store', signal: ctrl.signal });
+      if (!r.ok) throw new Error(r.status);
+      failStreak = 0; setOnline(true);
+    } catch (e) {
+      if (++failStreak >= 2) setOnline(false); else setTimeout(ping, 1500);
+    } finally { clearTimeout(to); }
+  }
+  function setOnline(v) {
+    if (v === online && (v || blocks.offline)) return;
+    online = v;
+    setBlock('offline', v ? null : `<div class="big pulse">📡</div><h2>Нет подключения к интернету</h2>
+      <p>Покемон GO работает только онлайн. Проверь мобильный интернет или Wi-Fi — игра продолжится сама, как только связь появится.</p>
+      <button class="btn" id="retryNet">Проверить снова</button>`);
+    if (v) { refreshWorld(); fetchWeather(); }
+  }
+  window.addEventListener('offline', () => setOnline(false));
+  window.addEventListener('online', ping);
+  setInterval(ping, 10000);
+
+  let watchId = null, gotFix = false;
+  const gpsMsg = (title, text) => `<div class="big pulse">📍</div><h2>${title}</h2><p>${text}</p><button class="btn" id="retryGps">Попробовать снова</button>`;
   function startGps() {
-    if (!('geolocation' in navigator)) return startDemo('Геолокация не поддерживается');
-    demo = false; $('dpad').classList.remove('on');
-    $('status').textContent = 'Поиск геолокации…';
+    if (!('geolocation' in navigator)) return setBlock('gps', gpsMsg('Нужна геолокация', 'Твой браузер не умеет определять местоположение. Открой игру в Chrome или Safari на телефоне.'));
     if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-    let got = false;
+    if (!gotFix) $('status').textContent = 'Поиск геолокации…';
     watchId = navigator.geolocation.watchPosition(
       (p) => {
-        if (demo) return;
-        if (p.coords.accuracy > 100 && got) return;
+        if (p.coords.accuracy > 100 && gotFix) return;
+        setBlock('gps', null);
         const ll = [p.coords.latitude, p.coords.longitude];
-        if (!got) { got = true; follow = true; lastPos = null; setPos(ll, true); return; }
+        if (!gotFix) { gotFix = true; follow = true; lastPos = null; setPos(ll, true); return; }
         setPos(ll);
       },
-      (err) => { if (!got) startDemo(err.code === 1 ? 'Доступ к геолокации запрещён' : 'Не удалось определить местоположение'); },
+      (err) => {
+        if (err.code === 1) setBlock('gps', gpsMsg('Доступ к геолокации запрещён',
+          'Игра работает только с настоящим местоположением. Нажми на значок 🔒 рядом с адресом сайта → «Местоположение» → «Разрешить», затем нажми кнопку ниже.'));
+        else if (!gotFix) setBlock('gps', gpsMsg('Не получается найти тебя', 'Включи геолокацию (GPS) на телефоне и выйди на открытое место.'));
+      },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
     );
   }
-  function startDemo(reason) {
-    demo = true;
-    if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-    $('dpad').classList.add('on');
-    follow = true;
-    setPos(pos || DEFAULT_POS, true);
-    popup(`<div class="big">🗺️</div><h2>Демо-режим</h2>
-      <p>${reason ? reason + '. ' : ''}Ходи стрелками на экране или клавишами WASD / ↑↓←→. Двойной тап по карте — телепорт.</p>
-      <button class="btn" data-ok>Поехали!</button>`);
-  }
-  const STEP = 0.00012; // ~13 m
-  function move(dx, dy) {
-    if (!demo || !pos) return;
-    const b = map.getBearing() * Math.PI / 180;
-    const east = dx * Math.cos(b) + dy * Math.sin(b), north = -dx * Math.sin(b) + dy * Math.cos(b);
-    follow = true;
-    setPos([pos[0] + north * STEP, pos[1] + east * STEP / Math.cos(pos[0] * Math.PI / 180)]);
-  }
-  let holdTimer;
-  document.querySelectorAll('#dpad button').forEach((b) => {
-    const [dx, dy] = b.dataset.d.split(',').map(Number);
-    const start = (e) => { e.preventDefault(); move(dx, dy); clearInterval(holdTimer); holdTimer = setInterval(() => move(dx, dy), 140); };
-    const stop = () => clearInterval(holdTimer);
-    b.addEventListener('pointerdown', start); b.addEventListener('pointerup', stop); b.addEventListener('pointerleave', stop); b.addEventListener('pointercancel', stop);
-  });
-  const KEYS = { ArrowUp: [0, 1], KeyW: [0, 1], ArrowDown: [0, -1], KeyS: [0, -1], ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0] };
-  window.addEventListener('keydown', (e) => {
-    if (!KEYS[e.code] || anyScreenOpen() || e.target.tagName === 'INPUT') return;
-    e.preventDefault(); move(...KEYS[e.code]);
-  });
-  map.on('dblclick', (e) => { if (demo) { follow = true; setPos([e.lngLat.lat, e.lngLat.lng]); } });
 
   // ================= START =================
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
@@ -1756,4 +1766,5 @@
   checkStreak();
   checkMedals();
   startGps();
+  ping();
 })();
