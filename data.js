@@ -224,12 +224,14 @@ const ITEMS = {
   incense: { name: 'Ладан',           icon: '🪔', desc: '15 минут покемоны сами приходят к тебе' },
   lucky:   { name: 'Счастливое яйцо', icon: '🍀', desc: '30 минут весь опыт ×2' },
   pass:    { name: 'Рейд-пропуск',    icon: '🎟️', desc: 'Вход в рейд. Один бесплатный каждый день' },
+  poffin:  { name: 'Пуф',             icon: '🧁', desc: 'Любимое лакомство напарника: сытость 100% и +4 сердечка' },
 };
 const CURRENCY = {
   dust:   { name: 'Звёздная пыль',   icon: '💫' },
   coins:  { name: 'Монеты',          icon: '🪙' },
   pack:   { name: 'Набор карточек',  icon: '🎴' },
   shards: { name: 'Осколки карточек', icon: '🔷' },
+  gems:   { name: 'Кристаллы',       icon: '💎' },
 };
 
 // Collectible cards: card rarity follows the Pokémon's rarity
@@ -265,6 +267,7 @@ const SHOP = [
   { id: 'egg',     title: 'Яйцо 10 км',       icon: '🥚', price: 250, egg: 10 },
   { id: 'dust',    title: '5000 звёздной пыли', icon: '💫', price: 200, give: { dust: 5000 } },
   { id: 'pack',    title: 'Набор карточек',   icon: '🎴', price: 120, give: { pack: 1 } },
+  { id: 'poffin',  title: 'Пуф для напарника', icon: '🧁', price: 60,  give: { poffin: 1 } },
 ];
 
 // Weather -> boosted types
@@ -398,4 +401,39 @@ const STOP_FALLBACK = [
   ['🎨', 'Граффити на стене'], ['🪑', 'Старая скамейка'], ['⛲', 'Маленький фонтанчик'], ['🖼️', 'Мурал'], ['🗿', 'Скульптура во дворе'],
   ['🛝', 'Детская площадка'], ['🏛️', 'Арка'], ['📮', 'Почтовый ящик'], ['🪧', 'Памятная табличка'], ['🏮', 'Старинный фонарь'],
   ['🧩', 'Мозаика'], ['⛺', 'Беседка'], ['🌷', 'Клумба'], ['🐈', 'Кошачий двор'], ['🌳', 'Большое дерево'], ['🚲', 'Велопарковка'],
+];
+
+// ---------- Buddy care (tamagotchi) ----------
+const AFFECTION = [
+  { name: 'Знакомый',         hearts: 0,   perks: [] },
+  { name: 'Хороший приятель', hearts: 10,  perks: ['🍬 Две конфеты вместо одной за прогулки'] },
+  { name: 'Отличный друг',    hearts: 70,  perks: ['🎁 Каждый день приносит подарок', '🎯 +5% к поимке'] },
+  { name: 'Ультра-друг',      hearts: 150, perks: ['👀 Замечает редких покемонов рядом', '⚔️ +10% урона, когда он в команде', '🎯 +10% к поимке'] },
+  { name: 'Лучший друг',      hearts: 300, perks: ['⚔️ +15% урона, когда он в команде', '🎯 +15% к поимке', '✨ +10% к шансу блестящих', '🎁 Подарки щедрее'] },
+];
+const BUDDY_FOOD = {
+  berry:  { name: 'Ягода Разз', icon: '🍓', food: 25,  mood: 5,  hearts: 1 },
+  poffin: { name: 'Пуф',        icon: '🧁', food: 100, mood: 40, hearts: 4 },
+};
+// hearts-earning actions per day
+const BUDDY_LIMITS = { feed: 3, pet: 3, play: 2, walk: 3 };
+const BUDDY_DECAY = { food: 5, mood: 4 };   // points lost per hour
+
+// ---------- Donations / premium currency ----------
+// Real payments need a payment provider and a server to confirm the purchase.
+// Until then `enabled` stays false and the shop explains that purchases are coming soon.
+const DONATE = { enabled: false, supportUrl: '' };
+const GEM_PACKS = [
+  { id: 'gems100',  gems: 100,  bonus: 0,   price: '99 ₽',   icon: '💎' },
+  { id: 'gems550',  gems: 500,  bonus: 50,  price: '449 ₽',  icon: '💎', tag: 'Популярное' },
+  { id: 'gems1200', gems: 1000, bonus: 200, price: '849 ₽',  icon: '💠' },
+  { id: 'gems2600', gems: 2000, bonus: 600, price: '1 590 ₽', icon: '👑', tag: 'Выгодно' },
+];
+const GEM_OFFERS = [
+  { id: 'starter', title: 'Набор новичка',     icon: '🎒', gems: 120, give: { ultra: 10, pack: 3, poffin: 3, incense: 2 }, once: true },
+  { id: 'coins',   title: '1000 монет',        icon: '🪙', gems: 100, give: { coins: 1000 } },
+  { id: 'pass',    title: 'Премиум-пропуск',   icon: '⭐', gems: 90,  pass: true },
+  { id: 'poffins', title: '5 пуфов',           icon: '🧁', gems: 40,  give: { poffin: 5 } },
+  { id: 'packs',   title: '5 наборов карточек', icon: '🎴', gems: 150, give: { pack: 5 } },
+  { id: 'raid',    title: '3 рейд-пропуска',   icon: '🎟️', gems: 60,  give: { pass: 3 } },
 ];
